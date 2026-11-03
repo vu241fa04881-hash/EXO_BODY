@@ -25,7 +25,7 @@ class MoveAssist3DViewer {
     this.exoMeshes = [];
     this.sensorMeshes = [];
 
-    // Articulated joint references
+    // Articulated joint references - Lower Body
     this.pelvis = null;
     this.torsoGroup = null;
     this.headMesh = null;
@@ -46,10 +46,27 @@ class MoveAssist3DViewer {
     this.leftAnkle = null;
     this.leftFoot = null;
 
-    // Exoskeleton components
+    // Articulated joint references - Upper Body
+    this.rightShoulder = null;
+    this.rightUpperArm = null;
+    this.rightElbow = null;
+    this.rightForearm = null;
+    this.rightWrist = null;
+    this.rightHand = null;
+
+    this.leftShoulder = null;
+    this.leftUpperArm = null;
+    this.leftElbow = null;
+    this.leftForearm = null;
+    this.leftWrist = null;
+    this.leftHand = null;
+
+    // Exoskeleton components - Lower Limbs
     this.waistHalo = null;
     this.actuatorCoreMesh = null;
     this.actuatorGlowLight = null;
+    this.leftActuatorCoreMesh = null;
+    this.leftActuatorGlowLight = null;
     this.thighCuff = null;
     this.shankBrace = null;
     this.footPlate = null;
@@ -57,13 +74,27 @@ class MoveAssist3DViewer {
     this.torqueArcMat = null;
     this.torqueConeMat = null;
 
-    // Virtual Sensors
+    // Exoskeleton components - Spine, Upper Body & Arms
+    this.spineExo = null;
+    this.backpackUnit = null;
+    this.chestHarness = null;
+    this.cranialBand = null;
+    this.rightShoulderCoreMesh = null;
+    this.leftShoulderCoreMesh = null;
+    this.rightElbowCoreMesh = null;
+    this.leftElbowCoreMesh = null;
+    this.rightElbowLight = null;
+
+    // Virtual Sensors (Lower & Upper Body)
     this.fsrHeelMesh = null;
     this.fsrMetaMesh = null;
     this.fsrToeMesh = null;
     this.emgPatchMesh = null;
     this.thighImuMesh = null;
     this.shankImuMesh = null;
+    this.armImuMesh = null;
+    this.armEmgMesh = null;
+    this.spineImuMesh = null;
 
     // Layer visibility
     this.showExo = true;
@@ -76,7 +107,29 @@ class MoveAssist3DViewer {
     this.hasCustomModel = false;
     this.customModelName = '';
 
+    // Upper-Limb & Lower-Limb Joint Jog States
+    this.hipJogAngleDeg = 0.0;
+    this.armJogAngleDeg = 0.0;
+    this.shoulderJogAngleDeg = 0.0;
+    this.ankleJogAngleDeg = 0.0;
+
     this.init();
+  }
+
+  setHipJogAngle(deg) {
+    this.hipJogAngleDeg = Math.max(-15.0, Math.min(90.0, parseFloat(deg) || 0.0));
+  }
+
+  setArmJogAngle(deg) {
+    this.armJogAngleDeg = Math.max(0.0, Math.min(90.0, parseFloat(deg) || 0.0));
+  }
+
+  setShoulderJogAngle(deg) {
+    this.shoulderJogAngleDeg = Math.max(-45.0, Math.min(110.0, parseFloat(deg) || 0.0));
+  }
+
+  setAnkleJogAngle(deg) {
+    this.ankleJogAngleDeg = Math.max(-30.0, Math.min(30.0, parseFloat(deg) || 0.0));
   }
 
   init() {
@@ -193,48 +246,137 @@ class MoveAssist3DViewer {
   }
 
   initMaterials() {
-    // Sleek medical cyan mannequin aesthetic matching reference image
-    this.skinMat = new THREE.MeshStandardMaterial({
-      color: 0x8fe3f7,
-      roughness: 0.32,
-      metalness: 0.08
+    // 1. Translucent Polished Mannequin Aesthetic (Reference Image 1: Clear/Frosted acrylic mannequin)
+    this.skinMat = new THREE.MeshPhysicalMaterial({
+      color: 0xc4ebf8,
+      roughness: 0.18,
+      metalness: 0.06,
+      transmission: 0.38,
+      opacity: 0.90,
+      transparent: true,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.12,
+      ior: 1.44
     });
 
-    this.skinJointMat = new THREE.MeshStandardMaterial({
-      color: 0x76d2e9,
-      roughness: 0.36,
-      metalness: 0.12
+    this.skinJointMat = new THREE.MeshPhysicalMaterial({
+      color: 0x86d8f0,
+      roughness: 0.22,
+      metalness: 0.12,
+      transmission: 0.25,
+      opacity: 0.94,
+      transparent: true,
+      clearcoat: 0.70
     });
 
-    // Dark carbon/titanium structural frame
+    // 2. High-Tech Carbon Composite & Structural Titanium Frame
     this.exoFrameMat = new THREE.MeshStandardMaterial({
       color: 0x121722,
-      roughness: 0.28,
+      roughness: 0.26,
       metalness: 0.88
     });
 
     this.exoMetalMat = new THREE.MeshStandardMaterial({
       color: 0x94a3b8,
-      roughness: 0.20,
+      roughness: 0.18,
       metalness: 0.95
     });
 
-    // Luminous electric cyan metallic rings
+    // 3. Ergonomic Dark Padded Fabric & Webbing Harness (Reference Image 1 & 3)
+    this.fabricMat = new THREE.MeshStandardMaterial({
+      color: 0x151821,
+      roughness: 0.85,
+      metalness: 0.10
+    });
+
+    // 4. Multi-Conductor Bowden Cable & Wiring Harness (Reference Image 3 C & D)
+    this.cablePurpleMat = new THREE.MeshStandardMaterial({
+      color: 0x9333ea,
+      roughness: 0.24,
+      metalness: 0.40
+    });
+
+    this.cableBlackMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.35,
+      metalness: 0.50
+    });
+
+    // 5. Emergency Stop / Power Switch (Reference Image 3 D: Red actuator button on rear unit)
+    this.redButtonMat = new THREE.MeshStandardMaterial({
+      color: 0xef4444,
+      emissive: 0xb91c1c,
+      emissiveIntensity: 0.75,
+      roughness: 0.18,
+      metalness: 0.60
+    });
+
+    // 6. Dual-Rotor Stator Copper Electromagnetic Coils (Reference Image 2: Multi-rotor shoulder joint)
+    this.copperCoilMat = new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      roughness: 0.22,
+      metalness: 0.92
+    });
+
+    // 7. Padded Bicep Sleeve "Ekso" Emblem Badge (Reference Image 1: Cyan shoulder sleeve badge)
+    this.eksoBadgeMat = new THREE.MeshStandardMaterial({
+      color: 0x06b6d4,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 0.65,
+      roughness: 0.25,
+      metalness: 0.75
+    });
+
+    // 8. Forearm Twist Detection Sensor (Reference Image 2 c(iii): Green/Cyan encoder markings)
+    this.twistingRingMat = new THREE.MeshStandardMaterial({
+      color: 0x10b981,
+      emissive: 0x059669,
+      emissiveIntensity: 0.60,
+      roughness: 0.20,
+      metalness: 0.80
+    });
+
+    // 9. Luminous Electric Cyan Accent Rings & Dynamic Actuator Core
     this.exoCyanRingMat = new THREE.MeshStandardMaterial({
       color: 0x00d8f6,
       emissive: 0x0088aa,
-      emissiveIntensity: 0.45,
+      emissiveIntensity: 0.50,
       roughness: 0.15,
       metalness: 0.85
     });
 
-    // Dynamic knee actuator core
     this.actuatorCoreMat = new THREE.MeshStandardMaterial({
       color: 0x00e5ff,
       emissive: 0x00e5ff,
       emissiveIntensity: 0.85,
       roughness: 0.22,
       metalness: 0.70
+    });
+
+    // 10. Gold Telemetry Contacts & Battery Pack Status LEDs
+    this.exoGoldMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      roughness: 0.25,
+      metalness: 0.90
+    });
+
+    this.batteryLedMat = new THREE.MeshStandardMaterial({
+      color: 0x10b981,
+      emissive: 0x10b981,
+      emissiveIntensity: 0.80,
+      roughness: 0.20,
+      metalness: 0.50
+    });
+
+    // 11. Cranial Visor Cyber-Glass HUD
+    this.visorMat = new THREE.MeshStandardMaterial({
+      color: 0x00d8f6,
+      emissive: 0x006688,
+      emissiveIntensity: 0.50,
+      roughness: 0.12,
+      metalness: 0.85,
+      transparent: true,
+      opacity: 0.85
     });
   }
 
@@ -258,6 +400,7 @@ class MoveAssist3DViewer {
     this.sensorMeshes.push(mesh);
     return mesh;
   }
+
 
   buildVirtualHuman() {
     this.humanGroup = new THREE.Group();
@@ -304,11 +447,146 @@ class MoveAssist3DViewer {
     neckMesh.position.y = 0.53;
     this.torsoGroup.add(this.registerHumanMesh(neckMesh));
 
+    // Ergonomic Cervical Collar Cushion (Reference Picture 1: Padded neck support cushion for overhead rehabilitation)
+    const collarGeo = new THREE.CylinderGeometry(0.068, 0.076, 0.065, 24);
+    this.cervicalCollar = new THREE.Mesh(collarGeo, this.fabricMat);
+    this.cervicalCollar.position.set(0, 0.525, -0.015);
+    this.torsoGroup.add(this.registerHumanMesh(this.cervicalCollar));
+
     // Head (Smooth spherical head from reference image)
     const headGeo = new THREE.SphereGeometry(0.115, 32, 32);
     this.headMesh = new THREE.Mesh(headGeo, this.skinMat);
     this.headMesh.position.y = 0.69;
     this.torsoGroup.add(this.registerHumanMesh(this.headMesh));
+
+    // -----------------------------------------------------------------------
+    // Upper Limbs: Bilateral Articulated Arms, Shoulders, Elbows & Hands
+    // -----------------------------------------------------------------------
+    const clavicleGeo = new THREE.CylinderGeometry(0.020, 0.024, 0.16, 16);
+    const shoulderBallGeo = new THREE.SphereGeometry(0.046, 20, 20);
+    const upperArmGeo = new THREE.CylinderGeometry(0.040, 0.033, 0.26, 20);
+    const elbowBallGeo = new THREE.SphereGeometry(0.034, 20, 20);
+    const forearmGeo = new THREE.CylinderGeometry(0.032, 0.026, 0.24, 20);
+    const wristBallGeo = new THREE.SphereGeometry(0.024, 16, 16);
+    const palmGeo = new THREE.BoxGeometry(0.024, 0.065, 0.048);
+    const fingerGeo = new THREE.CylinderGeometry(0.006, 0.005, 0.036, 12);
+    const thumbGeo = new THREE.CylinderGeometry(0.007, 0.006, 0.032, 12);
+
+    // Right Arm (Instrumented Limb - Positioned laterally x=0.235 for clean waist-halo clearance)
+    this.rightShoulder = new THREE.Group();
+    this.rightShoulder.position.set(0.235, 0.44, 0);
+
+    const rightClavicle = new THREE.Mesh(clavicleGeo, this.skinMat);
+    rightClavicle.rotation.z = -Math.PI / 2;
+    rightClavicle.position.set(-0.08, 0, 0);
+    this.rightShoulder.add(this.registerHumanMesh(rightClavicle));
+
+    const rightShoulderBall = new THREE.Mesh(shoulderBallGeo, this.skinJointMat);
+    this.rightShoulder.add(this.registerHumanMesh(rightShoulderBall));
+
+    this.rightUpperArm = new THREE.Group();
+    const rightUpperArmMesh = new THREE.Mesh(upperArmGeo, this.skinMat);
+    rightUpperArmMesh.position.y = -0.13;
+    this.rightUpperArm.add(this.registerHumanMesh(rightUpperArmMesh));
+    this.rightShoulder.add(this.rightUpperArm);
+
+    this.rightElbow = new THREE.Group();
+    this.rightElbow.position.set(0, -0.26, 0);
+    const rightElbowBall = new THREE.Mesh(elbowBallGeo, this.skinJointMat);
+    this.rightElbow.add(this.registerHumanMesh(rightElbowBall));
+    this.rightUpperArm.add(this.rightElbow);
+
+    this.rightForearm = new THREE.Group();
+    const rightForearmMesh = new THREE.Mesh(forearmGeo, this.skinMat);
+    rightForearmMesh.position.y = -0.12;
+    this.rightForearm.add(this.registerHumanMesh(rightForearmMesh));
+    this.rightElbow.add(this.rightForearm);
+
+    this.rightWrist = new THREE.Group();
+    this.rightWrist.position.set(0, -0.24, 0);
+    const rightWristBall = new THREE.Mesh(wristBallGeo, this.skinJointMat);
+    this.rightWrist.add(this.registerHumanMesh(rightWristBall));
+
+    // Right Hand (Natural mid-pronation: palm facing inward toward thigh, thumb pointing forward)
+    this.rightHand = new THREE.Group();
+    const rightPalm = new THREE.Mesh(palmGeo, this.skinJointMat);
+    rightPalm.position.set(0, -0.034, 0);
+    this.rightHand.add(this.registerHumanMesh(rightPalm));
+
+    // Relaxed fingers (4 digits aligned along Z, curling gently forward/inward)
+    for (let f = 0; f < 4; f++) {
+      const fingerMesh = new THREE.Mesh(fingerGeo, this.skinMat);
+      fingerMesh.position.set(0, -0.062, 0.016 - f * 0.011);
+      fingerMesh.rotation.x = -0.18; // anatomical resting curl
+      this.rightHand.add(this.registerHumanMesh(fingerMesh));
+    }
+    // Thumb: Anterior (+Z), oriented forward and slightly medially
+    const rightThumbMesh = new THREE.Mesh(thumbGeo, this.skinMat);
+    rightThumbMesh.rotation.x = -Math.PI / 4;
+    rightThumbMesh.rotation.z = -Math.PI / 6;
+    rightThumbMesh.position.set(-0.010, -0.030, 0.022);
+    this.rightHand.add(this.registerHumanMesh(rightThumbMesh));
+
+    this.rightWrist.add(this.rightHand);
+    this.rightForearm.add(this.rightWrist);
+    this.torsoGroup.add(this.rightShoulder);
+
+    // Left Arm (Contralateral Symmetrical Match - Positioned laterally x=-0.235)
+    this.leftShoulder = new THREE.Group();
+    this.leftShoulder.position.set(-0.235, 0.44, 0);
+
+    const leftClavicle = new THREE.Mesh(clavicleGeo, this.skinMat);
+    leftClavicle.rotation.z = Math.PI / 2;
+    leftClavicle.position.set(0.08, 0, 0);
+    this.leftShoulder.add(this.registerHumanMesh(leftClavicle));
+
+    const leftShoulderBall = new THREE.Mesh(shoulderBallGeo, this.skinJointMat);
+    this.leftShoulder.add(this.registerHumanMesh(leftShoulderBall));
+
+    this.leftUpperArm = new THREE.Group();
+    const leftUpperArmMesh = new THREE.Mesh(upperArmGeo, this.skinMat);
+    leftUpperArmMesh.position.y = -0.13;
+    this.leftUpperArm.add(this.registerHumanMesh(leftUpperArmMesh));
+    this.leftShoulder.add(this.leftUpperArm);
+
+    this.leftElbow = new THREE.Group();
+    this.leftElbow.position.set(0, -0.26, 0);
+    const leftElbowBall = new THREE.Mesh(elbowBallGeo, this.skinJointMat);
+    this.leftElbow.add(this.registerHumanMesh(leftElbowBall));
+    this.leftUpperArm.add(this.leftElbow);
+
+    this.leftForearm = new THREE.Group();
+    const leftForearmMesh = new THREE.Mesh(forearmGeo, this.skinMat);
+    leftForearmMesh.position.y = -0.12;
+    this.leftForearm.add(this.registerHumanMesh(leftForearmMesh));
+    this.leftElbow.add(this.leftForearm);
+
+    this.leftWrist = new THREE.Group();
+    this.leftWrist.position.set(0, -0.24, 0);
+    const leftWristBall = new THREE.Mesh(wristBallGeo, this.skinJointMat);
+    this.leftWrist.add(this.registerHumanMesh(leftWristBall));
+
+    // Left Hand (Mid-pronation)
+    this.leftHand = new THREE.Group();
+    const leftPalm = new THREE.Mesh(palmGeo, this.skinJointMat);
+    leftPalm.position.set(0, -0.034, 0);
+    this.leftHand.add(this.registerHumanMesh(leftPalm));
+
+    for (let f = 0; f < 4; f++) {
+      const fingerMesh = new THREE.Mesh(fingerGeo, this.skinMat);
+      fingerMesh.position.set(0, -0.062, 0.016 - f * 0.011);
+      fingerMesh.rotation.x = -0.18;
+      this.leftHand.add(this.registerHumanMesh(fingerMesh));
+    }
+    const leftThumbMesh = new THREE.Mesh(thumbGeo, this.skinMat);
+    leftThumbMesh.rotation.x = -Math.PI / 4;
+    leftThumbMesh.rotation.z = Math.PI / 6;
+    leftThumbMesh.position.set(0.010, -0.030, 0.022);
+    this.leftHand.add(this.registerHumanMesh(leftThumbMesh));
+
+    this.leftWrist.add(this.leftHand);
+    this.leftForearm.add(this.leftWrist);
+    this.torsoGroup.add(this.leftShoulder);
 
     this.pelvis.add(this.torsoGroup);
 
@@ -398,32 +676,561 @@ class MoveAssist3DViewer {
     this.exoGroup = new THREE.Group();
     this.exoGroup.name = "Mechanical_Exoskeleton";
 
-    // 1. Waist / Pelvic Harness ("Halo" Belt from reference image)
+    // =========================================================================
+    // 1. Pelvic Harness & Bilateral Hip Rotary BLDC Actuators
+    // =========================================================================
     this.waistHalo = new THREE.Group();
     this.waistHalo.position.set(0, 0.04, 0);
 
+    // Circumferential titanium/cyan halo ring encircling pelvis
     const haloTorusGeo = new THREE.TorusGeometry(0.195, 0.016, 18, 48);
     const haloTorus = new THREE.Mesh(haloTorusGeo, this.exoCyanRingMat);
     haloTorus.rotation.x = Math.PI / 2;
     this.waistHalo.add(this.registerExoMesh(haloTorus));
 
-    const lumbarGeo = new THREE.BoxGeometry(0.09, 0.18, 0.025);
+    // Ergonomic Padded Lumbar Waistband & Quick-Release Buckle (Reference Image 1 & 3 D)
+    const lumbarBeltGeo = new THREE.TorusGeometry(0.185, 0.022, 16, 40);
+    const lumbarBelt = new THREE.Mesh(lumbarBeltGeo, this.fabricMat);
+    lumbarBelt.rotation.x = Math.PI / 2;
+    this.waistHalo.add(this.registerExoMesh(lumbarBelt));
+
+    const waistBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.038, 0.020), this.exoMetalMat);
+    waistBuckle.position.set(0, 0, 0.198);
+    this.waistHalo.add(this.registerExoMesh(waistBuckle));
+
+    // Lumbar dorsal foundation block
+    const lumbarGeo = new THREE.BoxGeometry(0.10, 0.18, 0.028);
     const lumbarMesh = new THREE.Mesh(lumbarGeo, this.exoFrameMat);
     lumbarMesh.position.set(0, 0.09, -0.19);
     this.waistHalo.add(this.registerExoMesh(lumbarMesh));
 
-    const hipBracketGeo = new THREE.BoxGeometry(0.025, 0.08, 0.04);
-    const rightHipBracket = new THREE.Mesh(hipBracketGeo, this.exoFrameMat);
-    rightHipBracket.position.set(0.195, -0.02, 0);
-    this.waistHalo.add(this.registerExoMesh(rightHipBracket));
+    // Right Hip Rotary Actuator Pod
+    const hipActuatorGeo = new THREE.CylinderGeometry(0.042, 0.042, 0.035, 24);
+    const rightHipActuator = new THREE.Mesh(hipActuatorGeo, this.exoFrameMat);
+    rightHipActuator.rotation.z = Math.PI / 2;
+    rightHipActuator.position.set(0.195, -0.02, 0);
+    this.waistHalo.add(this.registerExoMesh(rightHipActuator));
 
-    const leftHipBracket = new THREE.Mesh(hipBracketGeo, this.exoFrameMat);
-    leftHipBracket.position.set(-0.195, -0.02, 0);
-    this.waistHalo.add(this.registerExoMesh(leftHipBracket));
+    const rightHipRing = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.005, 14, 28), this.exoCyanRingMat);
+    rightHipRing.rotation.y = Math.PI / 2;
+    rightHipRing.position.set(0.215, -0.02, 0);
+    this.waistHalo.add(this.registerExoMesh(rightHipRing));
+
+    // Left Hip Rotary Actuator Pod
+    const leftHipActuator = new THREE.Mesh(hipActuatorGeo, this.exoFrameMat);
+    leftHipActuator.rotation.z = Math.PI / 2;
+    leftHipActuator.position.set(-0.195, -0.02, 0);
+    this.waistHalo.add(this.registerExoMesh(leftHipActuator));
+
+    const leftHipRing = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.005, 14, 28), this.exoCyanRingMat);
+    leftHipRing.rotation.y = Math.PI / 2;
+    leftHipRing.position.set(-0.215, -0.02, 0);
+    this.waistHalo.add(this.registerExoMesh(leftHipRing));
 
     this.pelvis.add(this.waistHalo);
 
-    // 2. Right Leg Instrumented Exoskeleton
+    // =========================================================================
+    // 2. Articulated Dorsal Vertebral Spine Column Exoskeleton
+    // =========================================================================
+    this.spineExo = new THREE.Group();
+
+    // Dual vertical titanium load-bearing rails running along the spine
+    const spineRailGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.44, 16);
+    const rightSpineRail = new THREE.Mesh(spineRailGeo, this.exoMetalMat);
+    rightSpineRail.position.set(0.032, 0.28, -0.155);
+    this.spineExo.add(this.registerExoMesh(rightSpineRail));
+
+    const leftSpineRail = new THREE.Mesh(spineRailGeo, this.exoMetalMat);
+    leftSpineRail.position.set(-0.032, 0.28, -0.155);
+    this.spineExo.add(this.registerExoMesh(leftSpineRail));
+
+    // 5 Segmented titanium vertebrae blocks along midline
+    const vertYOffsets = [0.10, 0.18, 0.26, 0.35, 0.44];
+    vertYOffsets.forEach((yPos, idx) => {
+      const vertWidth = 0.075 - idx * 0.004;
+      const vertMesh = new THREE.Mesh(new THREE.BoxGeometry(vertWidth, 0.045, 0.022), this.exoFrameMat);
+      vertMesh.position.set(0, yPos, -0.160);
+      this.spineExo.add(this.registerExoMesh(vertMesh));
+
+      // Luminous cyan spinal telemetry node in center of each vertebra
+      const dotMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.024, 12), this.exoCyanRingMat);
+      dotMesh.rotation.x = Math.PI / 2;
+      dotMesh.position.set(0, yPos, -0.162);
+      this.spineExo.add(this.registerExoMesh(dotMesh));
+
+      // Lateral rib cage exoskeleton harness bands connecting to rails
+      if (idx === 1 || idx === 3) {
+        const ribBand = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.006, 12, 32, Math.PI * 0.9), this.exoFrameMat);
+        ribBand.rotation.x = Math.PI / 2;
+        ribBand.rotation.z = Math.PI * 0.55;
+        ribBand.position.set(0, yPos, 0);
+        this.spineExo.add(this.registerExoMesh(ribBand));
+      }
+    });
+
+    this.torsoGroup.add(this.spineExo);
+
+    // =========================================================================
+    // 3. Rear Battery & Telemetry Backpack Unit
+    // =========================================================================
+    this.backpackUnit = new THREE.Group();
+    this.backpackUnit.position.set(0, 0.27, -0.185);
+
+    // Beveled main battery enclosure
+    const packBody = new THREE.Mesh(new THREE.BoxGeometry(0.175, 0.23, 0.070), this.exoFrameMat);
+    this.backpackUnit.add(this.registerExoMesh(packBody));
+
+    // Outer reinforced bezel frame
+    const packBezel = new THREE.Mesh(new THREE.BoxGeometry(0.185, 0.24, 0.020), this.exoMetalMat);
+    packBezel.position.set(0, 0, -0.030);
+    this.backpackUnit.add(this.registerExoMesh(packBezel));
+
+    // Dual active micro-cooling intake fans with concentric cyan rim rings
+    const fanGeo = new THREE.CylinderGeometry(0.026, 0.026, 0.008, 20);
+    const leftFan = new THREE.Mesh(fanGeo, this.exoFrameMat);
+    leftFan.rotation.x = Math.PI / 2;
+    leftFan.position.set(-0.046, 0.04, -0.038);
+    this.backpackUnit.add(this.registerExoMesh(leftFan));
+
+    const leftFanRing = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.0035, 12, 24), this.exoCyanRingMat);
+    leftFanRing.position.set(-0.046, 0.04, -0.043);
+    this.backpackUnit.add(this.registerExoMesh(leftFanRing));
+
+    const rightFan = new THREE.Mesh(fanGeo, this.exoFrameMat);
+    rightFan.rotation.x = Math.PI / 2;
+    rightFan.position.set(0.046, 0.04, -0.038);
+    this.backpackUnit.add(this.registerExoMesh(rightFan));
+
+    const rightFanRing = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.0035, 12, 24), this.exoCyanRingMat);
+    rightFanRing.position.set(0.046, 0.04, -0.043);
+    this.backpackUnit.add(this.registerExoMesh(rightFanRing));
+
+    // 5 Segmented Illuminated Battery Level Bar Indicators
+    for (let b = 0; b < 5; b++) {
+      const barMesh = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.005, 0.006), this.batteryLedMat);
+      barMesh.position.set(-0.036 + b * 0.018, -0.065, -0.038);
+      this.backpackUnit.add(this.registerExoMesh(barMesh));
+    }
+
+    // Prominent Red Emergency Stop Button with Silver Metallic Bezel (Reference Image 3 D)
+    const eStopPod = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.014, 20), this.exoFrameMat);
+    eStopPod.rotation.x = Math.PI / 2;
+    eStopPod.position.set(0.052, -0.062, -0.038);
+    this.backpackUnit.add(this.registerExoMesh(eStopPod));
+
+    const eStopBezel = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.0028, 12, 24), this.exoMetalMat);
+    eStopBezel.position.set(0.052, -0.062, -0.044);
+    this.backpackUnit.add(this.registerExoMesh(eStopBezel));
+
+    const eStopBtnMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.016, 20), this.redButtonMat);
+    eStopBtnMesh.rotation.x = Math.PI / 2;
+    eStopBtnMesh.position.set(0.052, -0.062, -0.045);
+    this.backpackUnit.add(this.registerExoMesh(eStopBtnMesh));
+
+    // Top Telemetry Antenna & Beacon Node
+    const antBase = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.010, 0.025, 12), this.exoMetalMat);
+    antBase.position.set(0.065, 0.125, -0.020);
+    this.backpackUnit.add(this.registerExoMesh(antBase));
+
+    const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.007, 12, 12), this.exoCyanRingMat);
+    antTip.position.set(0.065, 0.142, -0.020);
+    this.backpackUnit.add(this.registerExoMesh(antTip));
+
+    this.torsoGroup.add(this.backpackUnit);
+
+    // =========================================================================
+    // 4. Thoracic Chest Armor & Shoulder Yoke Harness
+    // =========================================================================
+    this.chestHarness = new THREE.Group();
+    this.chestHarness.position.set(0, 0.36, 0.145);
+
+    // Anatomical Pectoral Chest Plate
+    const chestPlateGeo = new THREE.BoxGeometry(0.185, 0.160, 0.024);
+    const chestPlate = new THREE.Mesh(chestPlateGeo, this.exoFrameMat);
+    this.chestHarness.add(this.registerExoMesh(chestPlate));
+
+    // Central MoveAssist SIH 2026 glowing telemetry badge
+    const badgeGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.012, 6);
+    const badgeMesh = new THREE.Mesh(badgeGeo, this.exoFrameMat);
+    badgeMesh.rotation.x = Math.PI / 2;
+    badgeMesh.position.set(0, 0.012, 0.012);
+    this.chestHarness.add(this.registerExoMesh(badgeMesh));
+
+    const badgeRing = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.004, 12, 24), this.exoCyanRingMat);
+    badgeRing.position.set(0, 0.012, 0.018);
+    this.chestHarness.add(this.registerExoMesh(badgeRing));
+
+    // Clavicular load-bearing arches reaching from chest over shoulders to the spine
+    const yokeArchGeo = new THREE.TorusGeometry(0.115, 0.009, 12, 32, Math.PI * 0.7);
+    const rightYoke = new THREE.Mesh(yokeArchGeo, this.exoFrameMat);
+    rightYoke.rotation.y = Math.PI / 2;
+    rightYoke.rotation.z = Math.PI * 0.15;
+    rightYoke.position.set(0.14, 0.06, -0.145);
+    this.chestHarness.add(this.registerExoMesh(rightYoke));
+
+    const leftYoke = new THREE.Mesh(yokeArchGeo, this.exoFrameMat);
+    leftYoke.rotation.y = -Math.PI / 2;
+    leftYoke.rotation.z = Math.PI * 0.15;
+    leftYoke.position.set(-0.14, 0.06, -0.145);
+    this.chestHarness.add(this.registerExoMesh(leftYoke));
+
+    this.torsoGroup.add(this.chestHarness);
+
+    // =========================================================================
+    // 5. Cranial Neuro-Telemetry Headband & Visor HUD
+    // =========================================================================
+    this.cranialBand = new THREE.Group();
+    this.cranialBand.position.set(0, 0.03, 0);
+
+    // Titanium Brow Halo Band
+    const browBandGeo = new THREE.TorusGeometry(0.120, 0.009, 14, 40);
+    const browBand = new THREE.Mesh(browBandGeo, this.exoFrameMat);
+    browBand.rotation.x = Math.PI / 2;
+    this.cranialBand.add(this.registerExoMesh(browBand));
+
+    // Frontal Neuro-Telemetry Sensor Node
+    const frontVisorPod = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.024, 0.018), this.exoFrameMat);
+    frontVisorPod.position.set(0, 0, 0.122);
+    this.cranialBand.add(this.registerExoMesh(frontVisorPod));
+
+    const visorLens = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.014, 0.008), this.visorMat);
+    visorLens.position.set(0, 0, 0.131);
+    this.cranialBand.add(this.registerExoMesh(visorLens));
+
+    // Bilateral Temple Nodes with Cyan Accent Rings
+    const templeNodeGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.012, 16);
+    const rightTemple = new THREE.Mesh(templeNodeGeo, this.exoCyanRingMat);
+    rightTemple.rotation.z = Math.PI / 2;
+    rightTemple.position.set(0.122, 0, 0);
+    this.cranialBand.add(this.registerExoMesh(rightTemple));
+
+    const leftTemple = new THREE.Mesh(templeNodeGeo, this.exoCyanRingMat);
+    leftTemple.rotation.z = Math.PI / 2;
+    leftTemple.position.set(-0.122, 0, 0);
+    this.cranialBand.add(this.registerExoMesh(leftTemple));
+
+    this.headMesh.add(this.cranialBand);
+
+    // =========================================================================
+    // 6. Bilateral Arm & Shoulder Exoskeleton Assemblies
+    // =========================================================================
+    // --- Right Arm Exoskeleton ---
+    // 2-DOF Dual-Rotor Shoulder Actuator Assembly (Reference Image 2 c(ii))
+    // Stator 1 (Flexion/Extension): Sagittal axis rotor pod
+    const shoulderActGeo = new THREE.CylinderGeometry(0.046, 0.046, 0.034, 24);
+    const rightShoulderAct = new THREE.Mesh(shoulderActGeo, this.exoFrameMat);
+    rightShoulderAct.rotation.z = Math.PI / 2;
+    rightShoulderAct.position.set(0.044, 0, 0);
+    this.rightShoulder.add(this.registerExoMesh(rightShoulderAct));
+
+    const rightShoulderRing = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.0055, 14, 28), this.exoCyanRingMat);
+    rightShoulderRing.rotation.y = Math.PI / 2;
+    rightShoulderRing.position.set(0.062, 0, 0);
+    this.rightShoulder.add(this.registerExoMesh(rightShoulderRing));
+
+    this.rightShoulderCoreMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.036, 18), this.actuatorCoreMat.clone());
+    this.rightShoulderCoreMesh.rotation.z = Math.PI / 2;
+    this.rightShoulderCoreMesh.position.set(0.046, 0, 0);
+    this.rightShoulder.add(this.registerExoMesh(this.rightShoulderCoreMesh));
+
+    // Stator 2 (Abduction/Adduction): Orthogonal rotor with visible copper coils (Reference Image 2 c(ii))
+    const rightRotor2 = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.022, 20), this.exoFrameMat);
+    rightRotor2.rotation.x = Math.PI / 2;
+    rightRotor2.position.set(0.038, 0.032, -0.028);
+    this.rightShoulder.add(this.registerExoMesh(rightRotor2));
+
+    // Exposed stator copper coils
+    for (let c = 0; c < 6; c++) {
+      const angle = (c / 6.0) * Math.PI * 2;
+      const coilMesh = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.008, 0.018), this.copperCoilMat);
+      coilMesh.position.set(0.038 + 0.022 * Math.cos(angle), 0.032 + 0.022 * Math.sin(angle), -0.028);
+      coilMesh.rotation.z = angle;
+      this.rightShoulder.add(this.registerExoMesh(coilMesh));
+    }
+
+    // Acromion deltoid protective armor cowling shell (Reference Image 1)
+    const deltoidCowling = new THREE.Mesh(new THREE.SphereGeometry(0.058, 16, 16, 0, Math.PI), this.exoFrameMat);
+    deltoidCowling.rotation.x = -Math.PI / 2;
+    deltoidCowling.position.set(0.015, 0.018, 0);
+    this.rightShoulder.add(this.registerExoMesh(deltoidCowling));
+
+    // Right Upper Arm Carbon-Fiber Strut
+    const rightArmStrut = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.25, 0.026), this.exoFrameMat);
+    rightArmStrut.position.set(0.050, -0.13, 0);
+    this.rightUpperArm.add(this.registerExoMesh(rightArmStrut));
+
+    // Padded Bicep Ergonomic Fabric Wrap & Cyan Emblem Badge (Reference Image 1)
+    const bicepWrapGeo = new THREE.CylinderGeometry(0.046, 0.044, 0.095, 24);
+    const rightBicepWrap = new THREE.Mesh(bicepWrapGeo, this.fabricMat);
+    rightBicepWrap.position.set(0, -0.12, 0);
+    this.rightUpperArm.add(this.registerExoMesh(rightBicepWrap));
+
+    // Raised Cyan "MoveAssist/Ekso" Rehabilitation Emblem Badge
+    const bicepBadgeGeo = new THREE.BoxGeometry(0.026, 0.044, 0.008);
+    const rightBicepBadge = new THREE.Mesh(bicepBadgeGeo, this.eksoBadgeMat);
+    rightBicepBadge.position.set(0.044, -0.12, 0.022);
+    rightBicepBadge.rotation.y = Math.PI / 4;
+    this.rightUpperArm.add(this.registerExoMesh(rightBicepBadge));
+
+    const rightBicepCuffUpper = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.007, 14, 28), this.exoCyanRingMat);
+    rightBicepCuffUpper.rotation.x = Math.PI / 2;
+    rightBicepCuffUpper.position.set(0, -0.06, 0);
+    this.rightUpperArm.add(this.registerExoMesh(rightBicepCuffUpper));
+
+    const rightBicepCuffLower = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.007, 14, 28), this.exoCyanRingMat);
+    rightBicepCuffLower.rotation.x = Math.PI / 2;
+    rightBicepCuffLower.position.set(0, -0.20, 0);
+    this.rightUpperArm.add(this.registerExoMesh(rightBicepCuffLower));
+
+    // Right Powered Rotary Elbow BLDC Actuator
+    const elbowActGeo = new THREE.CylinderGeometry(0.040, 0.040, 0.026, 24);
+    const rightElbowAct = new THREE.Mesh(elbowActGeo, this.exoFrameMat);
+    rightElbowAct.rotation.z = Math.PI / 2;
+    rightElbowAct.position.set(0.048, 0, 0);
+    this.rightElbow.add(this.registerExoMesh(rightElbowAct));
+
+    const rightElbowRing = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.005, 14, 28), this.exoCyanRingMat);
+    rightElbowRing.rotation.y = Math.PI / 2;
+    rightElbowRing.position.set(0.062, 0, 0);
+    this.rightElbow.add(this.registerExoMesh(rightElbowRing));
+
+    this.rightElbowCoreMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.028, 18), this.actuatorCoreMat.clone());
+    this.rightElbowCoreMesh.rotation.z = Math.PI / 2;
+    this.rightElbowCoreMesh.position.set(0.050, 0, 0);
+    this.rightElbow.add(this.registerExoMesh(this.rightElbowCoreMesh));
+
+    this.rightElbowLight = new THREE.PointLight(0x00e5ff, 1.0, 0.8);
+    this.rightElbowLight.position.set(0.075, 0, 0);
+    this.rightElbow.add(this.rightElbowLight);
+
+    // Right Forearm Telescopic Struts & Wrist Orthosis
+    const rightForearmStrut = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.23, 0.022), this.exoFrameMat);
+    rightForearmStrut.position.set(0.044, -0.115, 0);
+    this.rightForearm.add(this.registerExoMesh(rightForearmStrut));
+
+    // Forearm Twisting Detection Optical Sensor Ring (Reference Image 2 c(iii))
+    const twistRingOuter = new THREE.Mesh(new THREE.TorusGeometry(0.040, 0.006, 14, 28), this.twistingRingMat);
+    twistRingOuter.rotation.x = Math.PI / 2;
+    twistRingOuter.position.set(0, -0.11, 0);
+    this.rightForearm.add(this.registerExoMesh(twistRingOuter));
+
+    const twistRingRotor = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.018, 20), this.exoFrameMat);
+    twistRingRotor.position.set(0, -0.11, 0);
+    this.rightForearm.add(this.registerExoMesh(twistRingRotor));
+
+    const rightWristRing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.005, 12, 24), this.exoCyanRingMat);
+    rightWristRing.rotation.x = Math.PI / 2;
+    rightWristRing.position.set(0, -0.22, 0);
+    this.rightForearm.add(this.registerExoMesh(rightWristRing));
+
+    // Right Motorized Hand Power Glove with Dorsal Linear Slide Sensor (Reference Image 2 c(iv))
+    const rightGlovePlate = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.055, 0.044), this.exoFrameMat);
+    rightGlovePlate.position.set(0.015, -0.032, 0);
+    this.rightHand.add(this.registerExoMesh(rightGlovePlate));
+
+    // Linear motion detection slider track (Reference Image 2 c(iv))
+    const slideTrack = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.040, 0.010), this.exoMetalMat);
+    slideTrack.position.set(0.020, -0.032, 0);
+    this.rightHand.add(this.registerExoMesh(slideTrack));
+
+    const slideCarriage = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.012, 0.012), this.exoGoldMat);
+    slideCarriage.position.set(0.022, -0.030, 0);
+    this.rightHand.add(this.registerExoMesh(slideCarriage));
+
+    // Exoskeletal finger linkage rods (lateral along fingers)
+    const linkRodGeo = new THREE.CylinderGeometry(0.0025, 0.0025, 0.038, 8);
+    for (let f = 0; f < 4; f++) {
+      const rod = new THREE.Mesh(linkRodGeo, this.exoMetalMat);
+      rod.position.set(0.014, -0.060, 0.016 - f * 0.011);
+      rod.rotation.x = -0.18;
+      this.rightHand.add(this.registerExoMesh(rod));
+    }
+
+    // --- Left Arm Exoskeleton (Contralateral Symmetrical Match) ---
+    // Left 2-DOF Dual-Rotor Shoulder Actuator Pod (Reference Image 2 c(ii))
+    const leftShoulderAct = new THREE.Mesh(shoulderActGeo, this.exoFrameMat);
+    leftShoulderAct.rotation.z = -Math.PI / 2;
+    leftShoulderAct.position.set(-0.044, 0, 0);
+    this.leftShoulder.add(this.registerExoMesh(leftShoulderAct));
+
+    const leftShoulderRing = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.0055, 14, 28), this.exoCyanRingMat);
+    leftShoulderRing.rotation.y = -Math.PI / 2;
+    leftShoulderRing.position.set(-0.062, 0, 0);
+    this.leftShoulder.add(this.registerExoMesh(leftShoulderRing));
+
+    this.leftShoulderCoreMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.036, 18), this.actuatorCoreMat.clone());
+    this.leftShoulderCoreMesh.rotation.z = -Math.PI / 2;
+    this.leftShoulderCoreMesh.position.set(-0.046, 0, 0);
+    this.leftShoulder.add(this.registerExoMesh(this.leftShoulderCoreMesh));
+
+    // Stator 2 (Abduction/Adduction): Orthogonal rotor with copper coils
+    const leftRotor2 = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.022, 20), this.exoFrameMat);
+    leftRotor2.rotation.x = Math.PI / 2;
+    leftRotor2.position.set(-0.038, 0.032, -0.028);
+    this.leftShoulder.add(this.registerExoMesh(leftRotor2));
+
+    for (let c = 0; c < 6; c++) {
+      const angle = (c / 6.0) * Math.PI * 2;
+      const coilMesh = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.008, 0.018), this.copperCoilMat);
+      coilMesh.position.set(-0.038 - 0.022 * Math.cos(angle), 0.032 + 0.022 * Math.sin(angle), -0.028);
+      coilMesh.rotation.z = angle;
+      this.leftShoulder.add(this.registerExoMesh(coilMesh));
+    }
+
+    const leftDeltoidCowling = new THREE.Mesh(new THREE.SphereGeometry(0.058, 16, 16, 0, Math.PI), this.exoFrameMat);
+    leftDeltoidCowling.rotation.x = -Math.PI / 2;
+    leftDeltoidCowling.position.set(-0.015, 0.018, 0);
+    this.leftShoulder.add(this.registerExoMesh(leftDeltoidCowling));
+
+    // Left Upper Arm Carbon-Fiber Strut
+    const leftArmStrut = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.25, 0.026), this.exoFrameMat);
+    leftArmStrut.position.set(-0.050, -0.13, 0);
+    this.leftUpperArm.add(this.registerExoMesh(leftArmStrut));
+
+    // Left Padded Bicep Wrap & Cyan Badge
+    const leftBicepWrap = new THREE.Mesh(bicepWrapGeo, this.fabricMat);
+    leftBicepWrap.position.set(0, -0.12, 0);
+    this.leftUpperArm.add(this.registerExoMesh(leftBicepWrap));
+
+    const leftBicepBadge = new THREE.Mesh(bicepBadgeGeo, this.eksoBadgeMat);
+    leftBicepBadge.position.set(-0.044, -0.12, 0.022);
+    leftBicepBadge.rotation.y = -Math.PI / 4;
+    this.leftUpperArm.add(this.registerExoMesh(leftBicepBadge));
+
+    const leftBicepCuffUpper = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.007, 14, 28), this.exoCyanRingMat);
+    leftBicepCuffUpper.rotation.x = Math.PI / 2;
+    leftBicepCuffUpper.position.set(0, -0.06, 0);
+    this.leftUpperArm.add(this.registerExoMesh(leftBicepCuffUpper));
+
+    const leftBicepCuffLower = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.007, 14, 28), this.exoCyanRingMat);
+    leftBicepCuffLower.rotation.x = Math.PI / 2;
+    leftBicepCuffLower.position.set(0, -0.20, 0);
+    this.leftUpperArm.add(this.registerExoMesh(leftBicepCuffLower));
+
+    // Left Powered Rotary Elbow BLDC Actuator
+    const leftElbowAct = new THREE.Mesh(elbowActGeo, this.exoFrameMat);
+    leftElbowAct.rotation.z = -Math.PI / 2;
+    leftElbowAct.position.set(-0.048, 0, 0);
+    this.leftElbow.add(this.registerExoMesh(leftElbowAct));
+
+    const leftElbowRing = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.005, 14, 28), this.exoCyanRingMat);
+    leftElbowRing.rotation.y = -Math.PI / 2;
+    leftElbowRing.position.set(-0.062, 0, 0);
+    this.leftElbow.add(this.registerExoMesh(leftElbowRing));
+
+    this.leftElbowCoreMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.028, 18), this.actuatorCoreMat.clone());
+    this.leftElbowCoreMesh.rotation.z = -Math.PI / 2;
+    this.leftElbowCoreMesh.position.set(-0.050, 0, 0);
+    this.leftElbow.add(this.registerExoMesh(this.leftElbowCoreMesh));
+
+    // Left Forearm Telescopic Struts & Wrist Orthosis
+    const leftForearmStrut = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.23, 0.022), this.exoFrameMat);
+    leftForearmStrut.position.set(-0.044, -0.115, 0);
+    this.leftForearm.add(this.registerExoMesh(leftForearmStrut));
+
+    // Forearm Twisting Detection Optical Sensor Ring
+    const leftTwistRingOuter = new THREE.Mesh(new THREE.TorusGeometry(0.040, 0.006, 14, 28), this.twistingRingMat);
+    leftTwistRingOuter.rotation.x = Math.PI / 2;
+    leftTwistRingOuter.position.set(0, -0.11, 0);
+    this.leftForearm.add(this.registerExoMesh(leftTwistRingOuter));
+
+    const leftTwistRingRotor = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.018, 20), this.exoFrameMat);
+    leftTwistRingRotor.position.set(0, -0.11, 0);
+    this.leftForearm.add(this.registerExoMesh(leftTwistRingRotor));
+
+    const leftWristRing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.005, 12, 24), this.exoCyanRingMat);
+    leftWristRing.rotation.x = Math.PI / 2;
+    leftWristRing.position.set(0, -0.22, 0);
+    this.leftForearm.add(this.registerExoMesh(leftWristRing));
+
+    // Left Motorized Hand Power Glove with Dorsal Slider
+    const leftGlovePlate = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.055, 0.044), this.exoFrameMat);
+    leftGlovePlate.position.set(-0.015, -0.032, 0);
+    this.leftHand.add(this.registerExoMesh(leftGlovePlate));
+
+    const leftSlideTrack = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.040, 0.010), this.exoMetalMat);
+    leftSlideTrack.position.set(-0.020, -0.032, 0);
+    this.leftHand.add(this.registerExoMesh(leftSlideTrack));
+
+    const leftSlideCarriage = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.012, 0.012), this.exoGoldMat);
+    leftSlideCarriage.position.set(-0.022, -0.030, 0);
+    this.leftHand.add(this.registerExoMesh(leftSlideCarriage));
+
+    for (let f = 0; f < 4; f++) {
+      const rod = new THREE.Mesh(linkRodGeo, this.exoMetalMat);
+      rod.position.set(-0.014, -0.060, 0.016 - f * 0.011);
+      rod.rotation.x = -0.18;
+      this.leftHand.add(this.registerExoMesh(rod));
+    }
+
+    // =========================================================================
+    // Bowden Cable & Wiring Harness Routing (Reference Image 3 C & D)
+    // Purple & Black flexible conduits connecting backpack unit to limbs
+    // =========================================================================
+    // Cable conduits from backpack up to Right Shoulder / Upper Arm
+    const rShoulderCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.045, 0.32, -0.21),
+      new THREE.Vector3(0.12, 0.42, -0.17),
+      new THREE.Vector3(0.20, 0.44, -0.08),
+      new THREE.Vector3(0.23, 0.40, 0.01)
+    ]);
+    const rShoulderCableGeo = new THREE.TubeGeometry(rShoulderCurve, 20, 0.0045, 8, false);
+    const rShoulderCableMesh = new THREE.Mesh(rShoulderCableGeo, this.cablePurpleMat);
+    this.torsoGroup.add(this.registerExoMesh(rShoulderCableMesh));
+
+    const rShoulderCable2Geo = new THREE.TubeGeometry(rShoulderCurve, 20, 0.0035, 8, false);
+    const rShoulderCable2Mesh = new THREE.Mesh(rShoulderCable2Geo, this.cableBlackMat);
+    rShoulderCable2Mesh.position.set(0.008, -0.010, 0.005);
+    this.torsoGroup.add(this.registerExoMesh(rShoulderCable2Mesh));
+
+    // Cable conduits from backpack up to Left Shoulder / Upper Arm
+    const lShoulderCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.045, 0.32, -0.21),
+      new THREE.Vector3(-0.12, 0.42, -0.17),
+      new THREE.Vector3(-0.20, 0.44, -0.08),
+      new THREE.Vector3(-0.23, 0.40, 0.01)
+    ]);
+    const lShoulderCableGeo = new THREE.TubeGeometry(lShoulderCurve, 20, 0.0045, 8, false);
+    const lShoulderCableMesh = new THREE.Mesh(lShoulderCableGeo, this.cablePurpleMat);
+    this.torsoGroup.add(this.registerExoMesh(lShoulderCableMesh));
+
+    const lShoulderCable2Mesh = new THREE.Mesh(lShoulderCableGeo, this.cableBlackMat);
+    lShoulderCable2Mesh.position.set(-0.008, -0.010, 0.005);
+    this.torsoGroup.add(this.registerExoMesh(lShoulderCable2Mesh));
+
+    // Cable conduits from lower backpack unit down to Right Hip / Thigh
+    const rHipCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.045, 0.16, -0.21),
+      new THREE.Vector3(0.12, 0.06, -0.18),
+      new THREE.Vector3(0.18, -0.04, -0.10),
+      new THREE.Vector3(0.20, -0.12, -0.02)
+    ]);
+    const rHipCableGeo = new THREE.TubeGeometry(rHipCurve, 20, 0.0050, 8, false);
+    const rHipCableMesh = new THREE.Mesh(rHipCableGeo, this.cablePurpleMat);
+    this.torsoGroup.add(this.registerExoMesh(rHipCableMesh));
+
+    const rHipCable2Mesh = new THREE.Mesh(rHipCableGeo, this.cableBlackMat);
+    rHipCable2Mesh.position.set(0.006, -0.008, 0.006);
+    this.torsoGroup.add(this.registerExoMesh(rHipCable2Mesh));
+
+    // Cable conduits from lower backpack unit down to Left Hip / Thigh
+    const lHipCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.045, 0.16, -0.21),
+      new THREE.Vector3(-0.12, 0.06, -0.18),
+      new THREE.Vector3(-0.18, -0.04, -0.10),
+      new THREE.Vector3(-0.20, -0.12, -0.02)
+    ]);
+    const lHipCableGeo = new THREE.TubeGeometry(lHipCurve, 20, 0.0050, 8, false);
+    const lHipCableMesh = new THREE.Mesh(lHipCableGeo, this.cablePurpleMat);
+    this.torsoGroup.add(this.registerExoMesh(lHipCableMesh));
+
+    const lHipCable2Mesh = new THREE.Mesh(lHipCableGeo, this.cableBlackMat);
+    lHipCable2Mesh.position.set(-0.006, -0.008, 0.006);
+    this.torsoGroup.add(this.registerExoMesh(lHipCable2Mesh));
+
+    // =========================================================================
+    // 7. Right Leg Instrumented Exoskeleton
+    // =========================================================================
     // Lateral Thigh Strut
     this.thighCuff = new THREE.Group();
     const rightThighStrut = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.40, 0.032), this.exoFrameMat);
@@ -452,7 +1259,7 @@ class MoveAssist3DViewer {
 
     this.rightThigh.add(this.thighCuff);
 
-    // Rotary Knee Actuator Assembly
+    // Rotary Knee Actuator Assembly (Right Instrumented Leg)
     const actuatorGroup = new THREE.Group();
     actuatorGroup.position.set(0.092, 0, 0);
     actuatorGroup.rotation.y = Math.PI / 2;
@@ -462,7 +1269,7 @@ class MoveAssist3DViewer {
     rimMesh.rotation.x = Math.PI / 2;
     actuatorGroup.add(this.registerExoMesh(rimMesh));
 
-    // Concentric Luminous Electric Cyan Accent Ring (Knee ring from reference image)
+    // Concentric Luminous Electric Cyan Accent Ring
     const accentRingGeo = new THREE.TorusGeometry(0.051, 0.0065, 16, 36);
     const accentRing = new THREE.Mesh(accentRingGeo, this.exoCyanRingMat);
     accentRing.position.set(0, 0, 0.014);
@@ -482,22 +1289,6 @@ class MoveAssist3DViewer {
     this.actuatorGlowLight = new THREE.PointLight(0x00e5ff, 1.6, 1.4);
     actuatorGroup.add(this.actuatorGlowLight);
 
-    // 3D Rotational Torque Arc & Cone Indicator
-    this.torqueIndicatorGroup = new THREE.Group();
-    this.torqueIndicatorGroup.position.set(0, 0, 0.025);
-
-    const arcGeo = new THREE.TorusGeometry(0.068, 0.0035, 8, 32, Math.PI * 0.7);
-    this.torqueArcMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    this.torqueIndicatorGroup.add(this.registerExoMesh(new THREE.Mesh(arcGeo, this.torqueArcMat)));
-
-    const coneGeo = new THREE.ConeGeometry(0.011, 0.024, 8);
-    this.torqueConeMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    const coneMesh = new THREE.Mesh(coneGeo, this.torqueConeMat);
-    coneMesh.position.set(0.068 * Math.cos(Math.PI * 0.7), 0.068 * Math.sin(Math.PI * 0.7), 0);
-    coneMesh.rotation.z = Math.PI * 0.7 + Math.PI / 2;
-    this.torqueIndicatorGroup.add(this.registerExoMesh(coneMesh));
-
-    actuatorGroup.add(this.torqueIndicatorGroup);
     this.rightKnee.add(actuatorGroup);
 
     // Shank Exoskeleton
@@ -534,7 +1325,25 @@ class MoveAssist3DViewer {
 
     this.rightFoot.add(this.footPlate);
 
-    // 3. Contralateral Left Leg Support Brackets (Symmetrical Exoskeleton Alignment)
+    // Lateral Rotary Ankle Actuator & Hinge Joint (Right)
+    const rightAnkleActuator = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.024, 20), this.exoFrameMat);
+    rightAnkleActuator.rotation.z = Math.PI / 2;
+    rightAnkleActuator.position.set(0.052, 0, 0);
+    this.rightAnkle.add(this.registerExoMesh(rightAnkleActuator));
+
+    const rightAnkleCyanRing = new THREE.Mesh(new THREE.TorusGeometry(0.030, 0.0045, 14, 24), this.exoCyanRingMat);
+    rightAnkleCyanRing.rotation.y = Math.PI / 2;
+    rightAnkleCyanRing.position.set(0.065, 0, 0);
+    this.rightAnkle.add(this.registerExoMesh(rightAnkleCyanRing));
+
+    const rightAnkleCore = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.026, 16), this.actuatorCoreMat.clone());
+    rightAnkleCore.rotation.z = Math.PI / 2;
+    rightAnkleCore.position.set(0.053, 0, 0);
+    this.rightAnkle.add(this.registerExoMesh(rightAnkleCore));
+
+    // =========================================================================
+    // 8. Contralateral Left Leg Exoskeleton (Complete Bilateral Assembly)
+    // =========================================================================
     const leftThighExo = new THREE.Group();
     const leftUpperCuff = new THREE.Mesh(new THREE.TorusGeometry(0.070, 0.009, 16, 36), this.exoCyanRingMat);
     leftUpperCuff.rotation.x = Math.PI / 2;
@@ -551,19 +1360,92 @@ class MoveAssist3DViewer {
     leftThighExo.add(this.registerExoMesh(leftThighStrut));
     this.leftThigh.add(leftThighExo);
 
-    const leftKneeActuator = new THREE.Mesh(rimGeo, this.exoFrameMat);
-    leftKneeActuator.position.set(-0.092, 0, 0);
-    leftKneeActuator.rotation.y = -Math.PI / 2;
-    this.leftKnee.add(this.registerExoMesh(leftKneeActuator));
+    // Left Rotary Knee BLDC Actuator Assembly
+    const leftActuatorGroup = new THREE.Group();
+    leftActuatorGroup.position.set(-0.092, 0, 0);
+    leftActuatorGroup.rotation.y = -Math.PI / 2;
+
+    const leftRimMesh = new THREE.Mesh(rimGeo, this.exoFrameMat);
+    leftRimMesh.rotation.x = Math.PI / 2;
+    leftActuatorGroup.add(this.registerExoMesh(leftRimMesh));
+
+    const leftAccentRing = new THREE.Mesh(accentRingGeo, this.exoCyanRingMat);
+    leftAccentRing.position.set(0, 0, 0.014);
+    leftActuatorGroup.add(this.registerExoMesh(leftAccentRing));
+
+    this.leftActuatorCoreMesh = new THREE.Mesh(coreGeo, this.actuatorCoreMat.clone());
+    this.leftActuatorCoreMesh.rotation.x = Math.PI / 2;
+    this.leftActuatorCoreMesh.position.set(0, 0, 0.002);
+    leftActuatorGroup.add(this.registerExoMesh(this.leftActuatorCoreMesh));
+
+    const leftCapMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.031, 20), this.exoMetalMat);
+    leftCapMesh.rotation.x = Math.PI / 2;
+    leftActuatorGroup.add(this.registerExoMesh(leftCapMesh));
+
+    this.leftActuatorGlowLight = new THREE.PointLight(0x00e5ff, 1.4, 1.2);
+    leftActuatorGroup.add(this.leftActuatorGlowLight);
+
+    // 3D Rotational Torque Arc & Cone Indicator (Mounted on Anatomical Right Knee, screen-left)
+    this.torqueIndicatorGroup = new THREE.Group();
+    this.torqueIndicatorGroup.position.set(0, 0, 0.025);
+
+    const arcGeo = new THREE.TorusGeometry(0.068, 0.0035, 8, 32, Math.PI * 0.7);
+    this.torqueArcMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    this.torqueIndicatorGroup.add(this.registerExoMesh(new THREE.Mesh(arcGeo, this.torqueArcMat)));
+
+    const coneGeo = new THREE.ConeGeometry(0.011, 0.024, 8);
+    this.torqueConeMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const coneMesh = new THREE.Mesh(coneGeo, this.torqueConeMat);
+    coneMesh.position.set(0.068 * Math.cos(Math.PI * 0.7), 0.068 * Math.sin(Math.PI * 0.7), 0);
+    coneMesh.rotation.z = Math.PI * 0.7 + Math.PI / 2;
+    this.torqueIndicatorGroup.add(this.registerExoMesh(coneMesh));
+
+    leftActuatorGroup.add(this.torqueIndicatorGroup);
+
+    this.leftKnee.add(leftActuatorGroup);
+
+    // Left Shank Exoskeleton
+    const leftShankExo = new THREE.Group();
+    const leftShankStrut = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.40, 0.028), this.exoFrameMat);
+    leftShankStrut.position.set(-0.088, -0.21, 0);
+    leftShankExo.add(this.registerExoMesh(leftShankStrut));
 
     const leftCalfCuff = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.008, 16, 36), this.exoCyanRingMat);
     leftCalfCuff.rotation.x = Math.PI / 2;
     leftCalfCuff.position.set(0, -0.20, 0);
-    this.leftShank.add(this.registerExoMesh(leftCalfCuff));
+    leftShankExo.add(this.registerExoMesh(leftCalfCuff));
 
+    const leftAnkleRing = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.007, 16, 32), this.exoCyanRingMat);
+    leftAnkleRing.rotation.x = Math.PI / 2;
+    leftAnkleRing.position.set(0, -0.38, 0);
+    leftShankExo.add(this.registerExoMesh(leftAnkleRing));
+
+    this.leftShank.add(leftShankExo);
+
+    // Left Articulated Footplate Orthosis
     const leftFootPlate = new THREE.Mesh(new THREE.BoxGeometry(0.096, 0.014, 0.24), this.exoFrameMat);
     leftFootPlate.position.set(0, -0.052, 0.06);
     this.leftFoot.add(this.registerExoMesh(leftFootPlate));
+
+    const leftStirrupMesh = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.06, 0.025), this.exoMetalMat);
+    leftStirrupMesh.position.set(-0.048, -0.022, 0);
+    this.leftFoot.add(this.registerExoMesh(leftStirrupMesh));
+
+    // Lateral Rotary Ankle Actuator & Hinge Joint (Left)
+    const leftAnkleActuator = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.024, 20), this.exoFrameMat);
+    leftAnkleActuator.rotation.z = Math.PI / 2;
+    leftAnkleActuator.position.set(-0.052, 0, 0);
+    this.leftAnkle.add(this.registerExoMesh(leftAnkleActuator));
+
+    const leftAnkleCyanRing = new THREE.Mesh(new THREE.TorusGeometry(0.030, 0.0045, 14, 24), this.exoCyanRingMat);
+    leftAnkleCyanRing.rotation.y = Math.PI / 2;
+    leftAnkleCyanRing.position.set(-0.065, 0, 0);
+    this.leftAnkle.add(this.registerExoMesh(leftAnkleCyanRing));
+
+    const leftAnkleCore = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.026, 16), this.actuatorCoreMat.clone());
+    leftAnkleCore.rotation.z = Math.PI / 2;
+    leftAnkleCore.position.set(-0.053, 0, 0);
+    this.leftAnkle.add(this.registerExoMesh(leftAnkleCore));
 
     this.scene.add(this.exoGroup);
   }
@@ -597,7 +1479,24 @@ class MoveAssist3DViewer {
     this.emgPatchMesh.position.set(0, -0.10, 0.065);
     this.rightThigh.add(this.registerSensorMesh(this.emgPatchMesh));
 
-    // 4. Tri-Zone FSR Foot Pressure Discs
+    // 4. Upper Limbs: Right Forearm 6-Axis IMU
+    this.armImuMesh = new THREE.Mesh(imuGeo, imuMat);
+    this.armImuMesh.position.set(0, -0.10, 0.042);
+    this.rightForearm.add(this.registerSensorMesh(this.armImuMesh));
+
+    // 5. Upper Limbs: Right Bicep sEMG Electrode Patch
+    this.armEmgMesh = new THREE.Mesh(emgGeo, emgMat);
+    this.armEmgMesh.rotation.x = Math.PI / 2;
+    this.armEmgMesh.position.set(0, -0.09, 0.052);
+    this.rightUpperArm.add(this.registerSensorMesh(this.armEmgMesh));
+
+    // 6. Thoracic Spine Central IMU & Telemetry Node
+    this.spineImuMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.008, 16), emgMat);
+    this.spineImuMesh.rotation.x = Math.PI / 2;
+    this.spineImuMesh.position.set(0, 0.38, 0.165);
+    this.torsoGroup.add(this.registerSensorMesh(this.spineImuMesh));
+
+    // 7. Tri-Zone FSR Foot Pressure Discs
     const fsrGeo = new THREE.CylinderGeometry(0.021, 0.021, 0.006, 20);
     const makeFsrMat = () => new THREE.MeshStandardMaterial({
       color: 0x00e5ff,
@@ -608,15 +1507,15 @@ class MoveAssist3DViewer {
 
     this.fsrHeelMesh = new THREE.Mesh(fsrGeo, makeFsrMat());
     this.fsrHeelMesh.position.set(0, -0.062, -0.02);
-    this.rightFoot.add(this.registerSensorMesh(this.fsrHeelMesh));
+    this.leftFoot.add(this.registerSensorMesh(this.fsrHeelMesh));
 
     this.fsrMetaMesh = new THREE.Mesh(fsrGeo, makeFsrMat());
     this.fsrMetaMesh.position.set(0, -0.062, 0.07);
-    this.rightFoot.add(this.registerSensorMesh(this.fsrMetaMesh));
+    this.leftFoot.add(this.registerSensorMesh(this.fsrMetaMesh));
 
     this.fsrToeMesh = new THREE.Mesh(fsrGeo, makeFsrMat());
     this.fsrToeMesh.position.set(0, -0.062, 0.14);
-    this.rightFoot.add(this.registerSensorMesh(this.fsrToeMesh));
+    this.leftFoot.add(this.registerSensorMesh(this.fsrToeMesh));
 
     this.scene.add(this.sensorGroup);
   }
@@ -628,6 +1527,10 @@ class MoveAssist3DViewer {
     const kneeRad = THREE.MathUtils.degToRad(k.knee_angle_deg || 0);
     const thighRad = THREE.MathUtils.degToRad(k.thigh_angle_deg || 0);
     const km = (k.mode || "WALK").toUpperCase().replace("-", "_");
+    if (k.hip_jog_deg !== undefined) this.hipJogAngleDeg = k.hip_jog_deg;
+    if (k.ankle_jog_deg !== undefined) this.ankleJogAngleDeg = k.ankle_jog_deg;
+    if (k.shoulder_jog_deg !== undefined) this.shoulderJogAngleDeg = k.shoulder_jog_deg;
+    if (k.elbow_jog_deg !== undefined) this.armJogAngleDeg = k.elbow_jog_deg;
 
     // =========================================================================
     // 1. Biomechanical Kinematic Articulation
@@ -665,7 +1568,7 @@ class MoveAssist3DViewer {
       if (this.rightAnkle) this.rightAnkle.rotation.x = ankleGroundAlign;
       if (this.leftAnkle) this.leftAnkle.rotation.x = ankleGroundAlign;
 
-    } else if (km === "STANDBY") {
+    } else if (km === "STANDBY" || km === "REHAB_REACH" || km === "ARM_REHAB") {
       // Upright locked stance on both limbs
       if (this.pelvis) this.pelvis.position.set(0, 0.95, 0);
       if (this.torsoGroup) this.torsoGroup.rotation.x = 0;
@@ -680,17 +1583,21 @@ class MoveAssist3DViewer {
       if (this.leftAnkle) this.leftAnkle.rotation.x = -kneeLock * 0.5;
 
     } else if (km === "MANUAL_JOG") {
-      // Manual Jog mode: Right leg tests actuator angle; Left leg provides stable support
-      if (this.pelvis) this.pelvis.position.set(0, 0.95, 0);
+      // Manual Jog mode: Anatomical Right leg (screen-left) articulates with hip, knee, and ankle jog; Left leg provides stable support
+      const jogClearance = (kneeRad > 0.08 && kneeRad < 1.0) ? Math.sin(kneeRad * Math.PI / 1.0) * 0.035 : 0;
+      if (this.pelvis) this.pelvis.position.set(0, 0.95 + jogClearance, 0);
       if (this.torsoGroup) this.torsoGroup.rotation.x = 0;
 
-      if (this.rightHip) this.rightHip.rotation.x = -thighRad;
-      if (this.rightKnee) this.rightKnee.rotation.x = kneeRad;
-      if (this.rightAnkle) this.rightAnkle.rotation.x = (thighRad - kneeRad) * 0.5;
+      const hipRad = (k.thigh_angle_deg !== undefined) ? THREE.MathUtils.degToRad(k.thigh_angle_deg) : THREE.MathUtils.degToRad(this.hipJogAngleDeg);
+      if (this.leftHip) this.leftHip.rotation.x = -hipRad;
+      if (this.leftKnee) this.leftKnee.rotation.x = kneeRad;
+      // Ankle remains still / locked at manual ankle jog angle (default 0.0 deg neutral)
+      if (this.leftAnkle) this.leftAnkle.rotation.x = THREE.MathUtils.degToRad(this.ankleJogAngleDeg);
 
-      if (this.leftHip) this.leftHip.rotation.x = 0;
-      if (this.leftKnee) this.leftKnee.rotation.x = THREE.MathUtils.degToRad(8.0);
-      if (this.leftAnkle) this.leftAnkle.rotation.x = -THREE.MathUtils.degToRad(8.0);
+      const standKnee = Math.max(0, THREE.MathUtils.degToRad(8.0) - jogClearance * 1.5);
+      if (this.rightHip) this.rightHip.rotation.x = 0;
+      if (this.rightKnee) this.rightKnee.rotation.x = standKnee;
+      if (this.rightAnkle) this.rightAnkle.rotation.x = -standKnee;
 
     } else {
       // =======================================================================
@@ -709,14 +1616,14 @@ class MoveAssist3DViewer {
       // Enforce strict anatomical knee limits: 0° (full extension) to 120° (flexion), zero hyperextension/recurvatum
       const rightKneeSafe = Math.max(0.0, Math.min(THREE.MathUtils.degToRad(120.0), rightAngles.kneeRad));
 
-      if (this.rightHip) this.rightHip.rotation.x = -rightAngles.thighRad;
-      if (this.rightKnee) this.rightKnee.rotation.x = rightKneeSafe;
+      if (this.leftHip) this.leftHip.rotation.x = -rightAngles.thighRad;
+      if (this.leftKnee) this.leftKnee.rotation.x = rightKneeSafe;
       
       // Ankle rotation keeps foot flat on ground during stance and level during swing
       const rightLegPitch = -rightAngles.thighRad + rightKneeSafe;
       let rightAnkleLocal = rightFootWorldRad - rightLegPitch;
       rightAnkleLocal = Math.max(-0.61, Math.min(0.44, rightAnkleLocal));
-      if (this.rightAnkle) this.rightAnkle.rotation.x = rightAnkleLocal;
+      if (this.leftAnkle) this.leftAnkle.rotation.x = rightAnkleLocal;
 
       // Alternate Movement for Left Leg (50% phase shift: 180° out-of-phase step)
       const leftCyclePercent = (cyclePercent + 50.0) % 100.0;
@@ -726,13 +1633,13 @@ class MoveAssist3DViewer {
 
       const leftKneeSafe = Math.max(0.0, Math.min(THREE.MathUtils.degToRad(120.0), leftAngles.kneeRad));
 
-      if (this.leftHip) this.leftHip.rotation.x = -leftAngles.thighRad;
-      if (this.leftKnee) this.leftKnee.rotation.x = leftKneeSafe;
+      if (this.rightHip) this.rightHip.rotation.x = -leftAngles.thighRad;
+      if (this.rightKnee) this.rightKnee.rotation.x = leftKneeSafe;
       
       const leftLegPitch = -leftAngles.thighRad + leftKneeSafe;
       let leftAnkleLocal = leftFootWorldRad - leftLegPitch;
       leftAnkleLocal = Math.max(-0.61, Math.min(0.44, leftAnkleLocal));
-      if (this.leftAnkle) this.leftAnkle.rotation.x = leftAnkleLocal;
+      if (this.rightAnkle) this.rightAnkle.rotation.x = leftAnkleLocal;
 
       // Pelvis natural sinusoidal vertical bounce & lateral weight shift
       // Minima at double-support (p=0%, 50%), maxima at single-support midstance (p=25%, 75%)
@@ -745,6 +1652,126 @@ class MoveAssist3DViewer {
         // Natural slight forward posture and subtle counter-twist
         const twist = Math.sin((cyclePercent / 100.0) * Math.PI * 2.0) * 0.035;
         this.torsoGroup.rotation.set(0.044, -twist, 0);
+      }
+    }
+
+    // =========================================================================
+    // Dynamic Upper Body & Arm Exoskeleton Kinematics (Coordinated Locomotion)
+    // =========================================================================
+    if (this.rightShoulder && this.leftShoulder) {
+      if (km === "REHAB_REACH" || km === "ARM_REHAB") {
+        // Clinical Upper-Limb Rehabilitation Reach & Overhead Workout (Images 1 & 3)
+        const reachTime = Date.now() * 0.0024;
+        const reachCycle = (Math.sin(reachTime) + 1.0) * 0.5; // 0.0 to 1.0
+
+        // Forward/Upward Elevation (up to 78 degrees)
+        const elevationAngle = -(0.25 + reachCycle * 1.10);
+        const abductionAngle = 0.22 + reachCycle * 0.14;
+
+        this.rightShoulder.rotation.x = elevationAngle;
+        this.rightShoulder.rotation.z = abductionAngle;
+        this.rightShoulder.rotation.y = -0.12 * reachCycle;
+
+        this.leftShoulder.rotation.x = elevationAngle;
+        this.leftShoulder.rotation.z = -abductionAngle;
+        this.leftShoulder.rotation.y = 0.12 * reachCycle;
+
+        // Elbow flexion into reach posture
+        const elbowFlex = -(0.45 + reachCycle * 0.70);
+        if (this.rightElbow) this.rightElbow.rotation.x = elbowFlex;
+        if (this.leftElbow) this.leftElbow.rotation.x = elbowFlex;
+
+        // Forearm twisting (pronation / supination from Image 2)
+        if (this.rightForearm) this.rightForearm.rotation.y = 0.40 * reachCycle;
+        if (this.leftForearm) this.leftForearm.rotation.y = -0.40 * reachCycle;
+
+        if (this.rightWrist) this.rightWrist.rotation.x = 0.15 * reachCycle;
+        if (this.leftWrist) this.leftWrist.rotation.x = 0.15 * reachCycle;
+
+      } else if (km === "SIT_STAND") {
+        const sitRatio = Math.min(1.0, Math.max(0.0, (k.knee_angle_deg || 0) / 85.0));
+        // Bilateral forward reaching for dynamic center-of-mass balance during chair transfer
+        this.rightShoulder.rotation.x = -sitRatio * 0.55;
+        this.rightShoulder.rotation.z = 0.14;
+        this.rightShoulder.rotation.y = -0.05;
+        // Negative rotation around X hinges elbows forward (+Z)
+        if (this.rightElbow) this.rightElbow.rotation.x = -(sitRatio * 0.35 + 0.15);
+        if (this.rightWrist) this.rightWrist.rotation.x = -sitRatio * 0.10;
+
+        this.leftShoulder.rotation.x = -sitRatio * 0.55;
+        this.leftShoulder.rotation.z = -0.14;
+        this.leftShoulder.rotation.y = 0.05;
+        if (this.leftElbow) this.leftElbow.rotation.x = -(sitRatio * 0.35 + 0.15);
+        if (this.leftWrist) this.leftWrist.rotation.x = -sitRatio * 0.10;
+
+      } else if (km === "STANDBY") {
+        // Natural resting upright ready posture with carrying angle (abduction z=±0.12)
+        this.rightShoulder.rotation.set(-0.04, 0, 0.12);
+        if (this.rightElbow) this.rightElbow.rotation.x = -0.16;
+        if (this.rightWrist) this.rightWrist.rotation.x = 0;
+
+        this.leftShoulder.rotation.set(-0.04, 0, -0.12);
+        if (this.leftElbow) this.leftElbow.rotation.x = -0.16;
+        if (this.leftWrist) this.leftWrist.rotation.x = 0;
+
+      } else if (km === "MANUAL_JOG") {
+        // Interactive Independent Shoulder & Elbow Jog Controls
+        const shoulderRad = -THREE.MathUtils.degToRad(this.shoulderJogAngleDeg);
+        const elbowRad = -THREE.MathUtils.degToRad(this.armJogAngleDeg);
+        this.rightShoulder.rotation.set(shoulderRad, 0, 0.14 + (Math.max(0, this.shoulderJogAngleDeg) / 110.0) * 0.12);
+        this.leftShoulder.rotation.set(shoulderRad, 0, -(0.14 + (Math.max(0, this.shoulderJogAngleDeg) / 110.0) * 0.12));
+        if (this.rightElbow) this.rightElbow.rotation.x = elbowRad;
+        if (this.leftElbow) this.leftElbow.rotation.x = elbowRad;
+        if (this.rightWrist) this.rightWrist.rotation.x = -0.06;
+        if (this.leftWrist) this.leftWrist.rotation.x = -0.06;
+
+      } else {
+        // True Contralateral Arm Swing matching human bipedal locomotion (WALK & RUN)
+        // When Right Leg swings forward (+Z, -thighRad < 0):
+        //   Right Arm swings BACKWARD (-Z, +rArmPitch)
+        //   Left Arm swings FORWARD (+Z, -lArmPitch)
+        // When Right Leg swings backward (-Z, -thighRad > 0):
+        //   Right Arm swings FORWARD (+Z, -rArmPitch)
+        //   Left Arm swings BACKWARD (-Z, +lArmPitch)
+        const isRun = km === "RUN";
+        const cyclePercent = telemetry.gait?.cycle_percent ?? 0.0;
+        const rightAngles = this.calculateGaitAngles(cyclePercent, isRun);
+
+        const dThigh = rightAngles.thighRad - 0.07;
+        const swingGain = isRun ? 0.75 : 0.45;
+
+        // In Three.js: +pitch = backward swing; -pitch = forward swing!
+        const rArmPitch = +dThigh * swingGain;
+        const lArmPitch = -dThigh * swingGain;
+
+        const abdAngle = isRun ? 0.15 : 0.12;
+
+        // Right arm kinematics (screen-left, anatomical Right arm)
+        this.leftShoulder.rotation.x = rArmPitch;
+        this.leftShoulder.rotation.z = -abdAngle;
+        this.leftShoulder.rotation.y = -0.08 * rArmPitch;
+
+        // Left arm kinematics (screen-right, anatomical Left arm)
+        this.rightShoulder.rotation.x = lArmPitch;
+        this.rightShoulder.rotation.z = abdAngle;
+        this.rightShoulder.rotation.y = 0.08 * lArmPitch;
+
+        // Elbows: CAN ONLY FLEX FORWARD (+Z), which in Three.js requires a NEGATIVE rotation around X!
+        // When swinging forward (pitch < 0), forwardFlex > 0, so elbow bends forward more.
+        const rForwardFlex = Math.max(0, -rArmPitch);
+        const lForwardFlex = Math.max(0, -lArmPitch);
+
+        if (isRun) {
+          if (this.leftElbow) this.leftElbow.rotation.x = -(0.95 + 0.65 * rForwardFlex);
+          if (this.rightElbow) this.rightElbow.rotation.x = -(0.95 + 0.65 * lForwardFlex);
+        } else {
+          if (this.leftElbow) this.leftElbow.rotation.x = -(0.18 + 0.52 * rForwardFlex);
+          if (this.rightElbow) this.rightElbow.rotation.x = -(0.18 + 0.52 * lForwardFlex);
+        }
+
+        // Wrists: Natural relaxed compliance
+        if (this.leftWrist) this.leftWrist.rotation.x = -0.10 * rForwardFlex;
+        if (this.rightWrist) this.rightWrist.rotation.x = -0.10 * lForwardFlex;
       }
     }
 
@@ -765,15 +1792,17 @@ class MoveAssist3DViewer {
       } else if (km === "STANDBY" || km === "MANUAL_JOG") {
         const kRad = (km === "STANDBY") ? THREE.MathUtils.degToRad(10.0) : kneeRad;
         const tRad = (km === "STANDBY") ? 0 : thighRad;
+        const jogClearance = (km === "MANUAL_JOG" && kneeRad > 0.08 && kneeRad < 1.0) ? Math.sin(kneeRad * Math.PI / 1.0) * 0.035 : 0;
         if (this.customBones.pelvis) {
-          this.customBones.pelvis.position.y = this.customBones.pelvisBaseY || 0.95;
+          this.customBones.pelvis.position.y = (this.customBones.pelvisBaseY || 0.95) + jogClearance;
         }
         if (this.customBones.rightHip) this.customBones.rightHip.rotation.x = -tRad;
         if (this.customBones.rightKnee) this.customBones.rightKnee.rotation.x = kRad;
+        const standKnee = (km === "STANDBY") ? THREE.MathUtils.degToRad(8.0) : Math.max(0, THREE.MathUtils.degToRad(8.0) - jogClearance * 1.5);
         if (this.customBones.leftHip) this.customBones.leftHip.rotation.x = 0;
-        if (this.customBones.leftKnee) this.customBones.leftKnee.rotation.x = THREE.MathUtils.degToRad(8.0);
-        const rAnk = (km === "STANDBY") ? -kRad * 0.5 : (tRad - kRad) * 0.5;
-        const lAnk = (km === "STANDBY") ? -kRad * 0.5 : -THREE.MathUtils.degToRad(8.0);
+        if (this.customBones.leftKnee) this.customBones.leftKnee.rotation.x = standKnee;
+        const rAnk = (km === "STANDBY") ? -kRad * 0.5 : THREE.MathUtils.degToRad(this.ankleJogAngleDeg);
+        const lAnk = -standKnee;
         if (this.customBones.rightAnkle) this.customBones.rightAnkle.rotation.x = rAnk;
         if (this.customBones.leftAnkle) this.customBones.leftAnkle.rotation.x = lAnk;
       } else {
@@ -812,10 +1841,16 @@ class MoveAssist3DViewer {
           this.customBones.pelvis.position.y = (this.customBones.pelvisBaseY || 0.95) + bounce;
         }
       }
+
+      // Synchronize custom 3D model arms across ALL modes (WALK, RUN, SIT_STAND, STANDBY, REHAB_REACH, MANUAL_JOG)
+      if (this.customBones.leftShoulder && this.leftShoulder) this.customBones.leftShoulder.rotation.copy(this.leftShoulder.rotation);
+      if (this.customBones.rightShoulder && this.rightShoulder) this.customBones.rightShoulder.rotation.copy(this.rightShoulder.rotation);
+      if (this.customBones.leftElbow && this.leftElbow) this.customBones.leftElbow.rotation.copy(this.leftElbow.rotation);
+      if (this.customBones.rightElbow && this.rightElbow) this.customBones.rightElbow.rotation.copy(this.rightElbow.rotation);
     }
 
     // =========================================================================
-    // 2. Actuator Dynamic Glow & Torque Arc Indicator
+    // 2. Actuator Dynamic Glow & Torque Arc Indicator (Full Body Synchronization)
     // =========================================================================
     const torque = Math.abs(telemetry.torques?.commanded_nm || 0);
     const mode = telemetry.safety?.mode || "NORMAL_AAN";
@@ -847,14 +1882,33 @@ class MoveAssist3DViewer {
       }
     }
 
-    if (this.actuatorCoreMesh) {
-      this.actuatorCoreMesh.material.color.setHex(glowColor);
-      this.actuatorCoreMesh.material.emissive.setHex(glowColor);
-      this.actuatorCoreMesh.material.emissiveIntensity = intensity;
-    }
+    const allActuatorCores = [
+      this.actuatorCoreMesh,
+      this.leftActuatorCoreMesh,
+      this.rightElbowCoreMesh,
+      this.leftElbowCoreMesh,
+      this.rightShoulderCoreMesh,
+      this.leftShoulderCoreMesh
+    ];
+    allActuatorCores.forEach(mesh => {
+      if (mesh && mesh.material) {
+        mesh.material.color.setHex(glowColor);
+        mesh.material.emissive.setHex(glowColor);
+        mesh.material.emissiveIntensity = intensity;
+      }
+    });
+
     if (this.actuatorGlowLight) {
       this.actuatorGlowLight.color.setHex(glowColor);
       this.actuatorGlowLight.intensity = intensity * 1.8;
+    }
+    if (this.leftActuatorGlowLight) {
+      this.leftActuatorGlowLight.color.setHex(glowColor);
+      this.leftActuatorGlowLight.intensity = intensity * 1.5;
+    }
+    if (this.rightElbowLight) {
+      this.rightElbowLight.color.setHex(glowColor);
+      this.rightElbowLight.intensity = intensity * 1.2;
     }
 
     if (this.torqueIndicatorGroup) {
@@ -912,6 +1966,8 @@ class MoveAssist3DViewer {
         this.customModel.visible = visible;
       }
       if (this.actuatorGlowLight) this.actuatorGlowLight.visible = visible;
+      if (this.leftActuatorGlowLight) this.leftActuatorGlowLight.visible = visible;
+      if (this.rightElbowLight) this.rightElbowLight.visible = visible;
       if (this.torqueIndicatorGroup) this.torqueIndicatorGroup.visible = visible;
     } else if (layerName === 'anatomy') {
       this.showAnatomy = visible;

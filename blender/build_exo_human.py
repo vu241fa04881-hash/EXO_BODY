@@ -29,6 +29,52 @@ root.name = 'Hips'
 root.head = (0, 0, 1.0)
 root.tail = (0, 0, 1.1)
 
+# Upper Body Spinal Chain
+spine = eb.new('Spine')
+spine.head = (0, 0, 1.1)
+spine.tail = (0, 0, 1.35)
+spine.parent = root
+
+chest = eb.new('Chest')
+chest.head = (0, 0, 1.35)
+chest.tail = (0, 0, 1.55)
+chest.parent = spine
+
+neck = eb.new('Neck')
+neck.head = (0, 0, 1.55)
+neck.tail = (0, 0, 1.63)
+neck.parent = chest
+
+head_bone = eb.new('Head')
+head_bone.head = (0, 0, 1.63)
+head_bone.tail = (0, 0, 1.80)
+head_bone.parent = neck
+
+# Bilateral Upper Limbs (Clavicle, Arm, Forearm, Hand)
+# Widen to x=±0.235 to provide clearance beyond pelvic halo and hip actuators
+for side, x in [('L', -0.235), ('R', 0.235)]:
+    clavicle = eb.new(f'Clavicle_{side}')
+    clavicle.head = (x * 0.25, 0.0, 1.52)
+    clavicle.tail = (x, 0.0, 1.52)
+    clavicle.parent = chest
+
+    upper_arm = eb.new(f'UpperArm_{side}')
+    upper_arm.head = (x, 0.0, 1.52)
+    upper_arm.tail = (x * 1.08, 0.0, 1.25)
+    upper_arm.parent = clavicle
+
+    forearm = eb.new(f'Forearm_{side}')
+    forearm.head = (x * 1.08, 0.0, 1.25)
+    forearm.tail = (x * 1.14, -0.04, 1.00)
+    forearm.parent = upper_arm
+    forearm.use_connect = True
+
+    hand_bone = eb.new(f'Hand_{side}')
+    hand_bone.head = (x * 1.14, -0.04, 1.00)
+    hand_bone.tail = (x * 1.16, -0.08, 0.88)
+    hand_bone.parent = forearm
+    hand_bone.use_connect = True
+
 # Lower Limb Chains
 # Blender world coordinates: +X Lateral Right (anatomical left), -X Lateral Left (anatomical right),
 # -Y Anterior (front), +Y Posterior (back), +Z Superior (up)
@@ -168,12 +214,35 @@ def create_component(name, bone_name, prim_type, pos, scale, mat, rot=(0, 0, 0))
 
 # 5. Build Human Anatomy Proxies
 create_component("Human_Pelvis", "Hips", 'cube', (0, 0, 1.0), (0.42, 0.22, 0.16), mat_human)
+create_component("Human_Torso", "Spine", 'cylinder', (0, 0, 1.22), (0.24, 0.16, 0.26), mat_human)
+create_component("Human_Chest", "Chest", 'cylinder', (0, 0, 1.45), (0.28, 0.18, 0.24), mat_human)
+create_component("Human_Head", "Head", 'cylinder', (0, 0, 1.72), (0.16, 0.16, 0.20), mat_human)
+
+for s, x in [('L', -0.19), ('R', 0.19)]:
+    create_component(f"Human_UpperArm_{s}", f"UpperArm_{s}", 'cylinder', (x, 0, 1.38), (0.07, 0.07, 0.28), mat_human)
+    create_component(f"Human_Forearm_{s}", f"Forearm_{s}", 'cylinder', (x, -0.02, 1.12), (0.055, 0.055, 0.26), mat_human)
+    create_component(f"Human_Hand_{s}", f"Hand_{s}", 'cube', (x, -0.06, 0.94), (0.07, 0.10, 0.04), mat_human)
+
 for s, x in [('L', -0.18), ('R', 0.18)]:
     create_component(f"Human_Thigh_{s}", f"Thigh_{s}", 'cylinder', (x, 0, 0.76), (0.08, 0.08, 0.48), mat_human)
     create_component(f"Human_Shank_{s}", f"Knee_{s}", 'cylinder', (x, 0, 0.30), (0.065, 0.065, 0.44), mat_human)
     create_component(f"Human_Foot_{s}", f"Ankle_{s}", 'cube', (x, -0.08, 0.04), (0.10, 0.24, 0.06), mat_human)
 
 # 6. Build Exoskeleton Hardware Elements
+create_component("Exo_SpineColumn", "Spine", 'cylinder', (0, 0.10, 1.25), (0.04, 0.04, 0.35), mat_metal)
+create_component("Exo_BackpackUnit", "Chest", 'cube', (0, 0.14, 1.42), (0.24, 0.12, 0.32), mat_metal)
+create_component("Exo_ChestHarness", "Chest", 'cube', (0, -0.10, 1.45), (0.26, 0.05, 0.20), mat_metal)
+create_component("Exo_VisorBand", "Head", 'cylinder', (0, 0, 1.74), (0.17, 0.17, 0.04), mat_led)
+
+for s, x in [('L', -0.19), ('R', 0.19)]:
+    x_off = x * 1.3
+    create_component(f"Exo_ShoulderActuator_{s}", f"UpperArm_{s}", 'cylinder', (x_off, 0, 1.52), (0.05, 0.05, 0.06), mat_metal, (0, math.radians(90), 0))
+    create_component(f"Exo_BicepStrut_{s}", f"UpperArm_{s}", 'cylinder', (x_off, 0, 1.38), (0.02, 0.02, 0.25), mat_metal)
+    create_component(f"Exo_ActuatorElbow_{s}", f"UpperArm_{s}", 'cylinder', (x_off, 0, 1.25), (0.045, 0.045, 0.05), mat_metal, (0, math.radians(90), 0))
+    create_component(f"Exo_ElbowLED_{s}", f"UpperArm_{s}", 'torus', (x_off + (0.025 if x > 0 else -0.025), 0, 1.25), (0.8, 0.8, 0.8), mat_led, (0, math.radians(90), 0))
+    create_component(f"Exo_ForearmBrace_{s}", f"Forearm_{s}", 'cylinder', (x_off, -0.02, 1.12), (0.018, 0.018, 0.24), mat_metal)
+    create_component(f"Exo_HandSplint_{s}", f"Hand_{s}", 'cube', (x_off, -0.06, 0.95), (0.06, 0.08, 0.02), mat_metal)
+
 for s, x in [('L', -0.18), ('R', 0.18)]:
     x_off = x * 1.35
     create_component(f"Exo_PelvisMount_{s}", "Hips", 'cylinder', (x * 1.3, 0, 0.98), (0.12, 0.12, 0.06), mat_metal)

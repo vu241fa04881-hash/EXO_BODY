@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MoveAssist — AI-Assisted Lower-Limb Rehabilitation Exoskeleton | SIH 2026</title>
+  <title>RIP 2026</title>
   
   <!-- Modern Typography from Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,7 +21,7 @@
       <div class="brand-icon">⚡</div>
       <div class="brand-text">
         <h1>MoveAssist <span class="sih-tag">SIH 2026 • PS SIH26113 • TEAM-147</span></h1>
-        <div class="brand-subtitle">AI-Assisted Lower-Limb Rehabilitation Exoskeleton • BERSERK TECHIES</div>
+        <div class="brand-subtitle">AI-Assisted Full-Body &amp; Lower-Limb Rehabilitation Exoskeleton • BERSERK TECHIES</div>
       </div>
     </div>
 
@@ -109,6 +109,7 @@
             <span class="mode-bar-label">EXERCISE MODE:</span>
             <div class="mode-btn-group">
               <button id="btn-mode-walk" class="mode-btn active" data-mode="WALK" title="Clinical Gait Walk (2.0s therapeutic cadence)">🚶 WALK</button>
+              <button id="btn-mode-reach" class="mode-btn" data-mode="REHAB_REACH" title="Upper-Limb Overhead Reach & Repertoire Exercise (Ekso / Nature BMI inspired)">🏋️ REHAB REACH</button>
               <button id="btn-mode-sitstand" class="mode-btn" data-mode="SIT_STAND" title="Sit-to-Stand Functional Transfer Cycle (4.0s bilateral)">🪑 SIT-STAND</button>
               <button id="btn-mode-run" class="mode-btn" data-mode="RUN" title="Accelerated Running Stride (0.85s cadence)">🏃 RUN</button>
               <button id="btn-mode-standby" class="mode-btn" data-mode="STANDBY" title="Balanced Upright Stance Hold (10° knee lock)">🧍 STANDBY</button>
@@ -116,10 +117,32 @@
             </div>
           </div>
           <!-- Manual Jog Slider Container (revealed when MANUAL_JOG is selected) -->
-          <div id="jog-slider-wrap" class="jog-slider-wrap" style="display:none;">
-            <span class="jog-label">Jog Angle:</span>
-            <input id="slider-manual-jog" type="range" min="0" max="115" step="0.5" value="0" class="jog-slider">
-            <span id="val-manual-jog" class="jog-val">0.0°</span>
+          <div id="jog-slider-wrap" class="jog-slider-wrap" style="display:none; gap: 0.9rem; align-items: center; flex-wrap: wrap;">
+            <div style="display:flex; align-items:center; gap:0.35rem;">
+              <span class="jog-label">HIP:</span>
+              <input id="slider-hip-jog" type="range" min="-15" max="90" step="0.5" value="0" class="jog-slider" title="Hip Flexion / Leg Elevation (-15° to 90°)">
+              <span id="val-hip-jog" class="jog-val">0.0°</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.35rem; padding-left: 0.45rem; border-left: 1px solid rgba(255,255,255,0.15);">
+              <span class="jog-label">KNEE:</span>
+              <input id="slider-manual-jog" type="range" min="0" max="115" step="0.5" value="0" class="jog-slider">
+              <span id="val-manual-jog" class="jog-val">0.0°</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.35rem; padding-left: 0.45rem; border-left: 1px solid rgba(255,255,255,0.15);">
+              <span class="jog-label">ANKLE:</span>
+              <input id="slider-ankle-jog" type="range" min="-30" max="30" step="0.5" value="0" class="jog-slider">
+              <span id="val-ankle-jog" class="jog-val">0.0°</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.35rem; padding-left: 0.45rem; border-left: 1px solid rgba(255,255,255,0.15);">
+              <span class="jog-label">SHOULDER:</span>
+              <input id="slider-shoulder-jog" type="range" min="-30" max="110" step="1" value="0" class="jog-slider">
+              <span id="val-shoulder-jog" class="jog-val">0°</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.35rem; padding-left: 0.45rem; border-left: 1px solid rgba(255,255,255,0.15);">
+              <span class="jog-label">ELBOW:</span>
+              <input id="slider-arm-jog" type="range" min="0" max="90" step="1" value="0" class="jog-slider">
+              <span id="val-arm-jog" class="jog-val">0°</span>
+            </div>
           </div>
         </div>
 
@@ -316,6 +339,33 @@
               <span class="sensor-badge">ACTIVE</span>
               <span id="sensor-emg-val" class="sensor-live-val">0.05 RMS</span>
             </div>
+
+            <div class="sensor-status-row">
+              <div class="sensor-name-wrap">
+                <span id="dot-imu-arm" class="sensor-health-dot active">●</span>
+                <span class="sensor-name">Arm / Shoulder IMU</span>
+              </div>
+              <span class="sensor-badge">ACTIVE</span>
+              <span id="sensor-arm-imu-val" class="sensor-live-val">0.0°</span>
+            </div>
+
+            <div class="sensor-status-row">
+              <div class="sensor-name-wrap">
+                <span id="dot-encoder-elbow" class="sensor-health-dot active">●</span>
+                <span class="sensor-name">Elbow Encoder</span>
+              </div>
+              <span class="sensor-badge">ACTIVE</span>
+              <span id="sensor-elbow-encoder-val" class="sensor-live-val">15.0°</span>
+            </div>
+
+            <div class="sensor-status-row">
+              <div class="sensor-name-wrap">
+                <span id="dot-emg-arm" class="sensor-health-dot active">●</span>
+                <span class="sensor-name">Arm sEMG (Biceps)</span>
+              </div>
+              <span class="sensor-badge">ACTIVE</span>
+              <span id="sensor-emg-arm-val" class="sensor-live-val">0.08 RMS</span>
+            </div>
           </div>
         </div>
 
@@ -505,6 +555,37 @@
             </div>
           </div>
           <canvas id="chart-fatigue" class="chart-canvas"></canvas>
+        </div>
+
+        <!-- Chart 5: Arm & Upper-Limb Kinematics -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span>🦾</span> Arm Kinematics (Shoulder &amp; Elbow ROM)
+            </div>
+            <div class="chart-legend">
+              <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;"></span> Shoulder (°)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#c084fc;"></span> Elbow (°)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#fbbf24;"></span> Vel (x0.2)</div>
+            </div>
+          </div>
+          <canvas id="chart-arm-kinematics" class="chart-canvas"></canvas>
+        </div>
+
+        <!-- Chart 6: Arm Actuator Torques & Muscle Power -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span>⚡</span> Arm Actuator Torques &amp; Power (Nm &amp; W)
+            </div>
+            <div class="chart-legend">
+              <div class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> τ_sh (Nm)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#f43f5e;"></span> τ_elb (Nm)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> Power (W)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#a78bfa;"></span> EMG (x10)</div>
+            </div>
+          </div>
+          <canvas id="chart-arm-torques" class="chart-canvas"></canvas>
         </div>
 
       </div>
@@ -745,14 +826,33 @@
             <span class="sensor-meta">Vertical GRF Total</span>
           </div>
 
+          <div class="sensor-chip">
+            <div class="sensor-chip-header">
+              <span>IMU ARM / SHOULDER</span>
+              <span class="sensor-dot"></span>
+            </div>
+            <span id="sensor-arm-imu-pitch" class="sensor-value-main">0.0°</span>
+            <span class="sensor-meta">Elevation Pitch / Gyro</span>
+          </div>
+
+          <div class="sensor-chip">
+            <div class="sensor-chip-header">
+              <span>ELBOW ENCODER</span>
+              <span class="sensor-dot"></span>
+            </div>
+            <span id="sensor-elbow-encoder-angle" class="sensor-value-main">15.0°</span>
+            <span class="sensor-meta">12-bit Optical Flexion</span>
+          </div>
+
           <div class="sensor-chip" style="grid-column: span 2;">
             <div class="sensor-chip-header">
-              <span>sEMG (RECTUS FEMORIS)</span>
+              <span>sEMG (RECTUS FEMORIS &amp; BICEPS BRACHII)</span>
               <span class="sensor-dot"></span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <span id="sensor-emg-env" class="sensor-value-main">0.05</span>
-              <span class="sensor-meta">RMS Voluntary Drive Envelope</span>
+              <span id="sensor-biceps-emg-env" class="sensor-value-main" style="color:#38bdf8;">0.08 RMS</span>
+              <span class="sensor-meta">Leg &amp; Arm Co-Drive</span>
             </div>
           </div>
         </div>

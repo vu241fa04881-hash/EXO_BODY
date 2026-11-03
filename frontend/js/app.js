@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   try {
     schematic2D = new MoveAssist2DSchematic('schematic-2d-canvas');
+    window.schematic2D = schematic2D;
   } catch (e) {
     console.error('[MoveAssist] Failed to initialize 2D Schematic:', e);
   }
@@ -29,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   try {
-    dashboard = new MoveAssistDashboard(viewer, charts);
+    dashboard = new MoveAssistDashboard(viewer, charts, schematic2D);
   } catch (e) {
     console.error('[MoveAssist] Failed to initialize Dashboard:', e);
   }

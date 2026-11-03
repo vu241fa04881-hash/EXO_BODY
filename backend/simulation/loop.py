@@ -62,6 +62,10 @@ class SimulationEngine:
         # Kinematic state & Exercise Modes
         self.kinematic_mode: str = "WALK"  # "WALK", "SIT_STAND", "RUN", "STANDBY", "MANUAL_JOG"
         self.manual_jog_angle_deg: float = 0.0
+        self.manual_hip_jog_deg: float = 0.0
+        self.manual_shoulder_jog_deg: float = 0.0
+        self.manual_ankle_jog_deg: float = 0.0
+        self.manual_elbow_jog_deg: float = 0.0
         self.cumulative_energy_joules: float = 0.0
         self.peak_power_watts: float = 0.0
 
@@ -69,6 +73,14 @@ class SimulationEngine:
         self.omega_knee_deg_s = 0.0
         self.alpha_knee_deg_s2 = 0.0
         self.theta_thigh_deg = 0.0
+        self.theta_ankle_deg = 0.0
+        self.theta_shoulder_deg = 0.0
+        self.theta_elbow_deg = 15.0
+        self.omega_shoulder_deg_s = 0.0
+        self.omega_elbow_deg_s = 0.0
+        self.tau_shoulder_nm = 0.0
+        self.tau_elbow_nm = 0.0
+        self.arm_power_watts = 0.0
         self.gait_sim_time = 0.0
 
         # Latest telemetry snapshot
@@ -76,14 +88,22 @@ class SimulationEngine:
         self._is_running = False
         self._sim_thread: Optional[threading.Thread] = None
 
-    def set_kinematic_mode(self, mode: str, jog_angle_deg: float = 0.0) -> None:
-        """Sets active kinematic exercise movement mode (WALK, SIT_STAND, RUN, STANDBY, MANUAL_JOG)."""
+    def set_kinematic_mode(self, mode: str, jog_angle_deg: float = 0.0,
+                           hip_jog_deg: float = 0.0,
+                           shoulder_jog_deg: float = 0.0,
+                           ankle_jog_deg: float = 0.0,
+                           elbow_jog_deg: float = 0.0) -> None:
+        """Sets active kinematic exercise movement mode (WALK, SIT_STAND, RUN, STANDBY, MANUAL_JOG, REHAB_REACH)."""
         with self.lock:
             mode_upper = mode.upper().replace("-", "_")
-            if mode_upper in ("WALK", "SIT_STAND", "RUN", "STANDBY", "MANUAL_JOG"):
+            if mode_upper in ("WALK", "SIT_STAND", "RUN", "STANDBY", "MANUAL_JOG", "REHAB_REACH", "ARM_REHAB"):
                 self.kinematic_mode = mode_upper
             if mode_upper == "MANUAL_JOG":
                 self.manual_jog_angle_deg = max(0.0, min(115.0, float(jog_angle_deg)))
+                self.manual_hip_jog_deg = max(-15.0, min(90.0, float(hip_jog_deg)))
+                self.manual_shoulder_jog_deg = max(-45.0, min(110.0, float(shoulder_jog_deg)))
+                self.manual_ankle_jog_deg = max(-30.0, min(30.0, float(ankle_jog_deg)))
+                self.manual_elbow_jog_deg = max(0.0, min(90.0, float(elbow_jog_deg)))
 
 
     def update_anthropometrics(self, height_m: float, mass_kg: float) -> None:
@@ -180,15 +200,22 @@ class SimulationEngine:
                 vel_scale = 0.0
 
             if self.kinematic_mode == "MANUAL_JOG":
-                # Clinician interactive manual jog dial/slider (0 to 115 deg)
+                # Clinician interactive manual jog dials/sliders for Hip, Knee, Ankle, Shoulder, and Elbow
                 target_knee_angle = self.manual_jog_angle_deg
-                target_thigh_angle = min(22.0, self.manual_jog_angle_deg * 0.20)
+                target_thigh_angle = self.manual_hip_jog_deg
+                # Ankle joint remains still / locked at manual ankle jog angle (default 0.0 deg)
+                target_ankle_angle = self.manual_ankle_jog_deg
+                target_shoulder_angle = self.manual_shoulder_jog_deg
+                target_elbow_angle = self.manual_elbow_jog_deg
                 p = 0.0
-                is_stance_phase = True
+                is_stance_phase = (self.manual_jog_angle_deg < 5.0 and abs(self.manual_hip_jog_deg) < 5.0)
             elif self.kinematic_mode == "STANDBY":
                 # Neutral standing balance posture
                 target_knee_angle = 10.0
                 target_thigh_angle = 0.0
+                target_ankle_angle = -5.0
+                target_shoulder_angle = 0.0
+                target_elbow_angle = 10.0
                 p = 0.0
                 is_stance_phase = True
             elif self.kinematic_mode == "SIT_STAND":
@@ -229,6 +256,10 @@ class SimulationEngine:
                     target_knee_angle = 85.0
                     target_thigh_angle = 75.0
                     is_stance_phase = False
+                target_ankle_angle = -(target_knee_angle - target_thigh_angle)
+                sit_ratio = max(0.0, min(1.0, (target_knee_angle - 8.0) / 77.0))
+                target_shoulder_angle = -sit_ratio * 35.0
+                target_elbow_angle = sit_ratio * 25.0 + 10.0
             elif self.kinematic_mode == "RUN":
                 # Athletic running cadence (0.85s stride period, ~141 steps/min, true running flight/stance phase)
                 run_period = 0.85
@@ -238,14 +269,12 @@ class SimulationEngine:
                 p = (cycle_time / run_period) * 100.0
 
                 # Human physiological running profile
-                # Stance phase (0-38%): shock absorption and elastic rebound
                 if p < 20.0:
                     sub = p / 20.0
                     target_knee_angle = 12.0 + 16.0 * math.sin(sub * (math.pi / 2.0))
                 elif p < 38.0:
                     sub = (p - 20.0) / 18.0
                     target_knee_angle = 28.0 - 18.0 * sub
-                # Swing phase (38-100%): natural posterior knee flexion for clearance, then terminal extension to foot-flat
                 elif p < 68.0:
                     sub = (p - 38.0) / 30.0
                     target_knee_angle = 10.0 + 58.0 * math.sin(sub * (math.pi / 2.0))
@@ -254,9 +283,26 @@ class SimulationEngine:
                     blend = 0.5 * (1.0 + math.cos(sub * math.pi))
                     target_knee_angle = 12.0 + 56.0 * blend
 
-                # Human running hip angle (peaks at forward heel strike p=0%, extends back at toe-off p=38%)
                 target_thigh_angle = 5.0 + 24.0 * math.cos(2.0 * math.pi * (p / 100.0))
+                target_ankle_angle = 14.0 * math.sin(2.0 * math.pi * (p / 100.0) - 0.5)
+                target_shoulder_angle = -28.0 * math.cos(2.0 * math.pi * (p / 100.0))
+                target_elbow_angle = 45.0 + 35.0 * max(0.0, math.sin(2.0 * math.pi * (p / 100.0)))
                 is_stance_phase = p < 38.0
+            elif self.kinematic_mode in ("REHAB_REACH", "ARM_REHAB"):
+                # Upper-Limb Rehabilitation Reach & Overhead Movement (inspired by Picture 1 & 3)
+                rehab_period = 3.0
+                self.gait_fsm.set_cycle_period(rehab_period)
+                self.gait_sim_time += self.dt * vel_scale
+                cycle_time = self.gait_sim_time % rehab_period
+                p = (cycle_time / rehab_period) * 100.0
+
+                target_knee_angle = 10.0  # Stable upright holding stance
+                target_thigh_angle = 0.0
+                target_ankle_angle = -5.0
+                reach_cycle = (math.sin(self.gait_sim_time * 2.0) + 1.0) * 0.5
+                target_shoulder_angle = 25.0 + 65.0 * reach_cycle
+                target_elbow_angle = 15.0 + 55.0 * reach_cycle
+                is_stance_phase = True
             else:
                 # Default "WALK": Clinical human gait profile (Winter's biomechanics, 2.0s period, 60 steps/min)
                 walk_period = 2.0
@@ -265,11 +311,6 @@ class SimulationEngine:
                 cycle_time = self.gait_sim_time % walk_period
                 p = (cycle_time / walk_period) * 100.0
 
-                # 0-15%: Loading response (shock absorption 4 -> 16 deg)
-                # 15-40%: Midstance support (straight leg column 16 -> 4 deg)
-                # 40-60%: Terminal stance & push-off (4 -> 32 deg)
-                # 60-73%: Initial swing clearance (32 -> 58 deg)
-                # 73-100%: Terminal swing forward extension (knee reaches forward 58 -> 4 deg)
                 if p < 15.0:
                     sub = p / 15.0
                     target_knee_angle = 4.0 + 12.0 * math.sin(sub * (math.pi / 2.0))
@@ -289,6 +330,9 @@ class SimulationEngine:
 
                 # Human walking hip angle (peaks at forward heel strike p=0%, extends back at toe-off p=50%)
                 target_thigh_angle = 4.0 + 18.0 * math.cos(2.0 * math.pi * (p / 100.0)) + 2.5 * math.cos(4.0 * math.pi * (p / 100.0))
+                target_ankle_angle = 9.0 * math.sin(2.0 * math.pi * (p / 100.0) - 0.4)
+                target_shoulder_angle = -18.0 * math.cos(2.0 * math.pi * (p / 100.0))
+                target_elbow_angle = 12.0 + 22.0 * max(0.0, math.sin(2.0 * math.pi * (p / 100.0)))
                 is_stance_phase = p < 60.0
 
             # If Controlled Soft Stop is active, smoothly settle into anti-collapse upright stance posture (12 deg knee)
@@ -296,15 +340,25 @@ class SimulationEngine:
                 blend_stop = 1.0 - vel_scale
                 target_knee_angle = (1.0 - blend_stop) * target_knee_angle + blend_stop * 12.0
                 target_thigh_angle = (1.0 - blend_stop) * target_thigh_angle + blend_stop * 2.0
+                target_ankle_angle = (1.0 - blend_stop) * target_ankle_angle + blend_stop * (-5.0)
 
             # Enforce strict anatomical knee range of motion limits (0° to safety max ROM limit, zero hyperextension/recurvatum)
             target_knee_angle = max(0.0, min(self.safety.max_rom, float(target_knee_angle)))
 
             # Numerical velocity
             prev_knee = self.theta_knee_deg
+            prev_shoulder = self.theta_shoulder_deg
+            prev_elbow = self.theta_elbow_deg
+
             self.theta_knee_deg = target_knee_angle
             self.theta_thigh_deg = target_thigh_angle
+            self.theta_ankle_deg = target_ankle_angle
+            self.theta_shoulder_deg = target_shoulder_angle
+            self.theta_elbow_deg = target_elbow_angle
+
             self.omega_knee_deg_s = (self.theta_knee_deg - prev_knee) / self.dt
+            self.omega_shoulder_deg_s = (self.theta_shoulder_deg - prev_shoulder) / self.dt
+            self.omega_elbow_deg_s = (self.theta_elbow_deg - prev_elbow) / self.dt
 
             # 4. Sensor simulation
             # Thigh & Shank IMUs
@@ -447,6 +501,67 @@ class SimulationEngine:
                 human_strength_pct = round(user_data["effective_strength"] * 100.0, 1)
                 exo_strength_pct = round(100.0 - human_strength_pct, 1)
 
+            # 11b. Upper-Limb Arm Biomechanics, Torques, Mechanical Power & Multi-Modal Sensors
+            m_body = self.anthro.mass_kg
+            h_body = self.anthro.height_m
+            m_upper_arm = 0.028 * m_body
+            m_forearm_hand = 0.022 * m_body
+            len_upper_arm = 0.186 * h_body
+            len_forearm = 0.146 * h_body
+            r_com_upper = 0.436 * len_upper_arm
+            r_com_forearm = 0.430 * len_forearm
+
+            rad_shoulder = math.radians(self.theta_shoulder_deg)
+            rad_elbow = math.radians(self.theta_elbow_deg)
+
+            # Gravitational torques about shoulder and elbow
+            tau_sh_grav = (m_upper_arm * r_com_upper + m_forearm_hand * len_upper_arm) * 9.81 * math.sin(rad_shoulder)
+            tau_elb_grav = (m_forearm_hand * r_com_forearm) * 9.81 * math.sin(rad_shoulder + rad_elbow)
+
+            # Arm assistive actuator torque (scaled by AAN assistance percentage)
+            assist_ratio = aan_fast["assistance_percent"] / 100.0
+            tau_sh_exo = round(tau_sh_grav * assist_ratio + 0.12 * math.radians(self.omega_shoulder_deg_s), 2)
+            tau_elb_exo = round(tau_elb_grav * assist_ratio + 0.08 * math.radians(self.omega_elbow_deg_s), 2)
+
+            self.tau_shoulder_nm = tau_sh_exo
+            self.tau_elbow_nm = tau_elb_exo
+
+            # Arm mechanical power in Watts
+            p_mech_sh = abs(tau_sh_exo * math.radians(self.omega_shoulder_deg_s))
+            p_mech_elb = abs(tau_elb_exo * math.radians(self.omega_elbow_deg_s))
+            self.arm_power_watts = round(p_mech_sh + p_mech_elb, 2)
+
+            # Simulated Arm Sensors:
+            # 1. Upper Arm IMU (measures humerus tilt pitch & rotational angular velocity)
+            imu_arm_data = {
+                "pitch_deg": round(self.theta_shoulder_deg, 1),
+                "gyro_deg_s": round(self.omega_shoulder_deg_s, 1),
+                "accel_g": round(math.cos(rad_shoulder), 2),
+                "healthy": True,
+                "sensor_type": "6-DOF UPPER ARM IMU",
+            }
+
+            # 2. Elbow Optical Encoder (12-bit joint encoder measuring flexion angle & velocity)
+            elbow_encoder_data = {
+                "angle_deg": round(self.theta_elbow_deg, 1),
+                "velocity_deg_s": round(self.omega_elbow_deg_s, 1),
+                "counts": int((abs(self.theta_elbow_deg) % 360.0) * (4096.0 / 360.0)),
+                "resolution_deg": 0.088,
+                "healthy": True,
+                "sensor_type": "12-BIT OPTICAL ROTARY ENCODER",
+            }
+
+            # 3. Arm Biceps / Deltoid sEMG Envelope (RMS)
+            vol_arm_elev = (abs(self.theta_shoulder_deg) / 90.0) * 0.40
+            vol_arm_flex = (abs(self.theta_elbow_deg) / 90.0) * 0.35
+            biceps_rms = round(min(1.0, max(0.06, 0.08 + (vol_arm_elev + vol_arm_flex) * (1.0 + user_data["fatigue_index"] * 0.25))), 2)
+            emg_arm_data = {
+                "envelope_rms": biceps_rms,
+                "activation_pct": round(biceps_rms * 100.0, 1),
+                "muscle": "BICEPS BRACHII & DELTOID",
+                "healthy": True,
+            }
+
             # 12. Compile comprehensive telemetry frame
             telemetry = {
                 "timestamp_s": round(self.time_elapsed, 3),
@@ -455,10 +570,30 @@ class SimulationEngine:
                 "kinematics": {
                     "mode": self.kinematic_mode,
                     "jog_angle_deg": round(self.manual_jog_angle_deg, 1),
+                    "hip_jog_deg": round(self.manual_hip_jog_deg, 1),
+                    "hip_angle_deg": round(self.theta_thigh_deg, 2),
                     "knee_angle_deg": round(self.theta_knee_deg, 2),
                     "thigh_angle_deg": round(self.theta_thigh_deg, 2),
                     "shank_angle_deg": round(self.theta_thigh_deg - self.theta_knee_deg, 2),
+                    "ankle_angle_deg": round(self.theta_ankle_deg, 2),
+                    "shoulder_angle_deg": round(self.theta_shoulder_deg, 2),
+                    "shoulder_velocity_deg_s": round(self.omega_shoulder_deg_s, 2),
+                    "elbow_angle_deg": round(self.theta_elbow_deg, 2),
+                    "elbow_velocity_deg_s": round(self.omega_elbow_deg_s, 2),
+                    "shoulder_jog_deg": round(self.manual_shoulder_jog_deg, 1),
+                    "ankle_jog_deg": round(self.manual_ankle_jog_deg, 1),
+                    "elbow_jog_deg": round(self.manual_elbow_jog_deg, 1),
                     "knee_velocity_deg_s": round(self.omega_knee_deg_s, 2),
+                },
+                "arm": {
+                    "shoulder_angle_deg": round(self.theta_shoulder_deg, 2),
+                    "shoulder_velocity_deg_s": round(self.omega_shoulder_deg_s, 2),
+                    "shoulder_torque_nm": round(tau_sh_exo, 2),
+                    "elbow_angle_deg": round(self.theta_elbow_deg, 2),
+                    "elbow_velocity_deg_s": round(self.omega_elbow_deg_s, 2),
+                    "elbow_torque_nm": round(tau_elb_exo, 2),
+                    "mechanical_watts": self.arm_power_watts,
+                    "biceps_emg_rms": biceps_rms,
                 },
                 "power": {
                     "mechanical_watts": round(p_mech, 2),
@@ -489,11 +624,11 @@ class SimulationEngine:
                     "user_strength": round(user_data["effective_strength"], 3),
                 },
                 "gait": {
-                    "phase": fsm_data["phase"],
+                    "phase": "BALANCED STANCE" if self.kinematic_mode in ("REHAB_REACH", "ARM_REHAB", "STANDBY") else fsm_data["phase"],
                     "cycle_percent": round(p, 1),
                     "stride_count": fsm_data["stride_count"],
                     "is_stance": bool(is_stance_phase),
-                    "stride_period_s": round(0.85 if self.kinematic_mode == "RUN" else (4.0 if self.kinematic_mode == "SIT_STAND" else (0.0 if self.kinematic_mode in ("STANDBY", "MANUAL_JOG") else 2.0)), 2),
+                    "stride_period_s": round(0.85 if self.kinematic_mode == "RUN" else (4.0 if self.kinematic_mode == "SIT_STAND" else (0.0 if self.kinematic_mode in ("STANDBY", "MANUAL_JOG", "REHAB_REACH", "ARM_REHAB") else 2.0)), 2),
                     "cadence_spm": round(120.0 / (0.85 if self.kinematic_mode == "RUN" else (4.0 if self.kinematic_mode == "SIT_STAND" else 2.0)), 1) if self.kinematic_mode in ("WALK", "RUN", "SIT_STAND") else 0.0,
                 },
                 "user": {
@@ -504,6 +639,9 @@ class SimulationEngine:
                 "sensors": {
                     "imu_thigh": imu_thigh_data,
                     "imu_shank": imu_shank_data,
+                    "imu_arm": imu_arm_data,
+                    "elbow_encoder": elbow_encoder_data,
+                    "emg_arm": emg_arm_data,
                     "foot_pressure": fsr_data,
                     "encoder": encoder_data,
                     "emg": emg_data,

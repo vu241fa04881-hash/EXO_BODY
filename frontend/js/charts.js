@@ -180,6 +180,8 @@ class MoveAssistChartsManager {
     this.aanChart = null;
     this.kinematicsChart = null;
     this.fatigueChart = null;
+    this.armKinematicsChart = null;
+    this.armTorqueChart = null;
     this.initCharts();
   }
 
@@ -236,6 +238,37 @@ class MoveAssistChartsManager {
     });
     this.fatigueChart.addSeries('fatigue', '#f43f5e');     // Rose
     this.fatigueChart.addSeries('emg_envelope', '#10b981'); // Emerald
+
+    // 5. Arm & Upper-Limb Kinematics (Shoulder Elevation & Elbow Flexion)
+    this.armKinematicsChart = new CanvasStripChart('chart-arm-kinematics', {
+      minY: -45,
+      maxY: 125,
+      unit: '°',
+      showZeroLine: true,
+      referenceLines: [
+        { y: 0, color: 'rgba(56,189,248,0.35)', dash: [3, 3], label: '0° Neutral' },
+        { y: 90, color: 'rgba(244,63,94,0.4)', dash: [3, 3], label: '90° Flex' }
+      ]
+    });
+    this.armKinematicsChart.addSeries('shoulder_angle', '#38bdf8'); // Sky blue
+    this.armKinematicsChart.addSeries('elbow_angle', '#c084fc');    // Purple
+    this.armKinematicsChart.addSeries('shoulder_vel', '#fbbf24');   // Amber (scaled x0.2)
+
+    // 6. Arm Actuator Torques & Assistive Drive
+    this.armTorqueChart = new CanvasStripChart('chart-arm-torques', {
+      minY: -15,
+      maxY: 20,
+      unit: ' Nm',
+      showZeroLine: true,
+      referenceLines: [
+        { y: 15, color: 'rgba(244,63,94,0.4)', dash: [4, 4], label: '+15 Nm Arm Limit' },
+        { y: -15, color: 'rgba(244,63,94,0.4)', dash: [4, 4], label: '-15 Nm Arm Limit' }
+      ]
+    });
+    this.armTorqueChart.addSeries('tau_shoulder', '#06b6d4');  // Cyan
+    this.armTorqueChart.addSeries('tau_elbow', '#f43f5e');     // Rose / Pink
+    this.armTorqueChart.addSeries('arm_power', '#10b981');     // Emerald
+    this.armTorqueChart.addSeries('biceps_emg', '#a78bfa');    // Lavender (scaled x10)
   }
 
   update(telemetry) {
@@ -274,6 +307,24 @@ class MoveAssistChartsManager {
       emg_envelope: emg.envelope_norm || 0
     });
     this.fatigueChart.render();
+
+    // 5. Push Arm Kinematics
+    const arm = telemetry.arm || {};
+    this.armKinematicsChart.pushData({
+      shoulder_angle: arm.shoulder_angle_deg ?? k.shoulder_angle_deg ?? 0,
+      elbow_angle: arm.elbow_angle_deg ?? k.elbow_angle_deg ?? 0,
+      shoulder_vel: (arm.shoulder_velocity_deg_s ?? k.shoulder_velocity_deg_s ?? 0) * 0.2
+    });
+    this.armKinematicsChart.render();
+
+    // 6. Push Arm Torques & Power
+    this.armTorqueChart.pushData({
+      tau_shoulder: arm.shoulder_torque_nm || 0,
+      tau_elbow: arm.elbow_torque_nm || 0,
+      arm_power: arm.mechanical_watts || 0,
+      biceps_emg: (arm.biceps_emg_rms ?? telemetry.sensors?.emg_arm?.envelope_rms ?? 0.1) * 10.0
+    });
+    this.armTorqueChart.render();
   }
 }
 

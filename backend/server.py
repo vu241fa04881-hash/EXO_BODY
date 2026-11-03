@@ -226,11 +226,26 @@ class MoveAssistRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/kinematics/mode":
             mode = str(post_data.get("mode", "WALK"))
             jog_angle = float(post_data.get("jog_angle_deg", 0.0))
-            self.engine.set_kinematic_mode(mode=mode, jog_angle_deg=jog_angle)
+            hip_jog = float(post_data.get("hip_jog_deg", 0.0))
+            shoulder_jog = float(post_data.get("shoulder_jog_deg", 0.0))
+            ankle_jog = float(post_data.get("ankle_jog_deg", 0.0))
+            elbow_jog = float(post_data.get("elbow_jog_deg", 0.0))
+            self.engine.set_kinematic_mode(
+                mode=mode,
+                jog_angle_deg=jog_angle,
+                hip_jog_deg=hip_jog,
+                shoulder_jog_deg=shoulder_jog,
+                ankle_jog_deg=ankle_jog,
+                elbow_jog_deg=elbow_jog
+            )
             self._send_json({
                 "status": "success",
                 "mode": self.engine.kinematic_mode,
-                "jog_angle_deg": self.engine.manual_jog_angle_deg
+                "jog_angle_deg": self.engine.manual_jog_angle_deg,
+                "hip_jog_deg": self.engine.manual_hip_jog_deg,
+                "shoulder_jog_deg": self.engine.manual_shoulder_jog_deg,
+                "ankle_jog_deg": self.engine.manual_ankle_jog_deg,
+                "elbow_jog_deg": self.engine.manual_elbow_jog_deg
             })
         elif path == "/api/simulation/start":
             self.engine.start_background_loop()

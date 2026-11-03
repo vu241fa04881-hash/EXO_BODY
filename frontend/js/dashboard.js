@@ -4,16 +4,17 @@
  */
 
 class MoveAssistDashboard {
-  constructor(viewer, charts) {
+  constructor(viewer, charts, schematic = null) {
     this.viewer = viewer;
     this.charts = charts;
+    this.schematic = schematic;
 
     // DOM Element References
     this.modeBadge = document.getElementById('safety-mode-badge');
     this.gaitPhaseBadge = document.getElementById('gait-phase-badge');
     this.strideCountEl = document.getElementById('stride-count');
     this.motorTempEl = document.getElementById('motor-temp');
-    
+
     // Actuator HUD Ring
     this.hudRingFill = document.getElementById('hud-ring-fill');
     this.hudCenterVal = document.getElementById('hud-center-val');
@@ -66,18 +67,28 @@ class MoveAssistDashboard {
     this.btnTestFatigueFallAcute = document.getElementById('btn-test-fatigue-fall-acute');
 
     // Sensor Matrix Readouts
-    // Sensor Matrix Readouts
     this.imuThighPitch = document.getElementById('sensor-thigh-pitch');
     this.imuShankPitch = document.getElementById('sensor-shank-pitch');
     this.encoderAngle = document.getElementById('sensor-encoder-angle');
     this.fsrTotalGrf = document.getElementById('sensor-fsr-grf');
     this.emgEnvelope = document.getElementById('sensor-emg-env');
+    this.imuArmPitch = document.getElementById('sensor-arm-imu-pitch');
+    this.elbowEncoderAngle = document.getElementById('sensor-elbow-encoder-angle');
+    this.bicepsEmgEnv = document.getElementById('sensor-biceps-emg-env');
 
     // Kinematic Movement Modes & Jog Elements
     this.modeBtns = document.querySelectorAll('.mode-btn');
     this.jogSliderWrap = document.getElementById('jog-slider-wrap');
+    this.hipJogSlider = document.getElementById('slider-hip-jog');
+    this.hipJogVal = document.getElementById('val-hip-jog');
     this.jogSlider = document.getElementById('slider-manual-jog');
     this.jogVal = document.getElementById('val-manual-jog');
+    this.ankleJogSlider = document.getElementById('slider-ankle-jog');
+    this.ankleJogVal = document.getElementById('val-ankle-jog');
+    this.shoulderJogSlider = document.getElementById('slider-shoulder-jog');
+    this.shoulderJogVal = document.getElementById('val-shoulder-jog');
+    this.armJogSlider = document.getElementById('slider-arm-jog');
+    this.armJogVal = document.getElementById('val-arm-jog');
 
     // Biomechanical Assistance & Power Elements
     this.humanStrengthPct = document.getElementById('val-human-strength-pct');
@@ -130,6 +141,12 @@ class MoveAssistDashboard {
     this.sensorFsrVal = document.getElementById('sensor-fsr-val');
     this.dotEmg = document.getElementById('dot-emg');
     this.sensorEmgVal = document.getElementById('sensor-emg-val');
+    this.dotImuArm = document.getElementById('dot-imu-arm');
+    this.sensorArmImuVal = document.getElementById('sensor-arm-imu-val');
+    this.dotEncoderElbow = document.getElementById('dot-encoder-elbow');
+    this.sensorElbowEncoderVal = document.getElementById('sensor-elbow-encoder-val');
+    this.dotEmgArm = document.getElementById('dot-emg-arm');
+    this.sensorEmgArmVal = document.getElementById('sensor-emg-arm-val');
 
     // Actuator Status Card Elements
     this.actuatorStatusTag = document.getElementById('actuator-status-tag');
@@ -168,16 +185,101 @@ class MoveAssistDashboard {
       });
     });
 
-    // Manual Jog Slider
+    // Helper to send all current manual jog angles
+    const postJogState = () => {
+      const hip = this.hipJogSlider ? parseFloat(this.hipJogSlider.value) || 0 : 0;
+      const knee = this.jogSlider ? parseFloat(this.jogSlider.value) || 0 : 0;
+      const ankle = this.ankleJogSlider ? parseFloat(this.ankleJogSlider.value) || 0 : 0;
+      const shoulder = this.shoulderJogSlider ? parseFloat(this.shoulderJogSlider.value) || 0 : 0;
+      const elbow = this.armJogSlider ? parseFloat(this.armJogSlider.value) || 0 : 0;
+      fetch('/api/kinematics/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'MANUAL_JOG',
+          hip_jog_deg: hip,
+          jog_angle_deg: knee,
+          ankle_jog_deg: ankle,
+          shoulder_jog_deg: shoulder,
+          elbow_jog_deg: elbow
+        })
+      });
+    };
+
+    // Manual Hip Jog Slider
+    if (this.hipJogSlider) {
+      this.hipJogSlider.addEventListener('input', (e) => {
+        const angle = parseFloat(e.target.value);
+        if (this.hipJogVal) this.hipJogVal.textContent = (angle >= 0 ? '+' : '') + angle.toFixed(1) + '°';
+        if (this.viewer && this.viewer.setHipJogAngle) {
+          this.viewer.setHipJogAngle(angle);
+        }
+        if (this.schematic && this.schematic.setHipJogAngle) {
+          this.schematic.setHipJogAngle(angle);
+        } else if (window.schematic2D && window.schematic2D.setHipJogAngle) {
+          window.schematic2D.setHipJogAngle(angle);
+        }
+        postJogState();
+      });
+    }
+
+    // Manual Knee Jog Slider
     if (this.jogSlider) {
       this.jogSlider.addEventListener('input', (e) => {
         const angle = parseFloat(e.target.value);
         if (this.jogVal) this.jogVal.textContent = angle.toFixed(1) + '°';
-        fetch('/api/kinematics/mode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: 'MANUAL_JOG', jog_angle_deg: angle })
-        });
+        postJogState();
+      });
+    }
+
+    // Manual Ankle Jog Slider
+    if (this.ankleJogSlider) {
+      this.ankleJogSlider.addEventListener('input', (e) => {
+        const angle = parseFloat(e.target.value);
+        if (this.ankleJogVal) this.ankleJogVal.textContent = (angle >= 0 ? '+' : '') + angle.toFixed(1) + '°';
+        if (this.viewer && this.viewer.setAnkleJogAngle) {
+          this.viewer.setAnkleJogAngle(angle);
+        }
+        if (this.schematic && this.schematic.setAnkleJogAngle) {
+          this.schematic.setAnkleJogAngle(angle);
+        } else if (window.schematic2D && window.schematic2D.setAnkleJogAngle) {
+          window.schematic2D.setAnkleJogAngle(angle);
+        }
+        postJogState();
+      });
+    }
+
+    // Manual Shoulder Jog Slider
+    if (this.shoulderJogSlider) {
+      this.shoulderJogSlider.addEventListener('input', (e) => {
+        const angle = parseFloat(e.target.value);
+        if (this.shoulderJogVal) this.shoulderJogVal.textContent = (angle >= 0 ? '+' : '') + angle.toFixed(0) + '°';
+        if (this.viewer && this.viewer.setShoulderJogAngle) {
+          this.viewer.setShoulderJogAngle(angle);
+        }
+        if (this.schematic && this.schematic.setShoulderJogAngle) {
+          this.schematic.setShoulderJogAngle(angle);
+        } else if (window.schematic2D && window.schematic2D.setShoulderJogAngle) {
+          window.schematic2D.setShoulderJogAngle(angle);
+        }
+        postJogState();
+      });
+    }
+
+    // Elbow / Arm Jog Slider
+    if (this.armJogSlider) {
+      this.armJogSlider.addEventListener('input', (e) => {
+        const angle = parseFloat(e.target.value);
+        if (this.armJogVal) this.armJogVal.textContent = angle.toFixed(0) + '°';
+        if (this.viewer && this.viewer.setArmJogAngle) {
+          this.viewer.setArmJogAngle(angle);
+        }
+        if (this.schematic && this.schematic.setArmJogAngle) {
+          this.schematic.setArmJogAngle(angle);
+        } else if (window.schematic2D && window.schematic2D.setArmJogAngle) {
+          window.schematic2D.setArmJogAngle(angle);
+        }
+        postJogState();
       });
     }
 
@@ -552,6 +654,15 @@ class MoveAssistDashboard {
     if (this.emgEnvelope && sensors.emg) {
       this.emgEnvelope.textContent = (sensors.emg.envelope_norm || 0).toFixed(2);
     }
+    if (this.imuArmPitch && sensors.imu_arm) {
+      this.imuArmPitch.textContent = `${(sensors.imu_arm.pitch_deg || 0).toFixed(1)}°`;
+    }
+    if (this.elbowEncoderAngle && sensors.elbow_encoder) {
+      this.elbowEncoderAngle.textContent = `${(sensors.elbow_encoder.angle_deg || 0).toFixed(1)}°`;
+    }
+    if (this.bicepsEmgEnv && sensors.emg_arm) {
+      this.bicepsEmgEnv.textContent = `${(sensors.emg_arm.envelope_rms || 0.08).toFixed(2)} RMS`;
+    }
 
     // 8. Anthropometrics status
     const anthro = telemetry.anthropometry || {};
@@ -597,17 +708,33 @@ class MoveAssistDashboard {
 
     if (this.jogSliderWrap) {
       this.jogSliderWrap.style.display = (currentMode === 'MANUAL_JOG') ? 'flex' : 'none';
-      if (currentMode === 'MANUAL_JOG' && k.jog_angle_deg !== undefined) {
-        if (this.jogSlider && document.activeElement !== this.jogSlider) {
-          this.jogSlider.value = k.jog_angle_deg;
+      if (currentMode === 'MANUAL_JOG') {
+        if (k.hip_jog_deg !== undefined) {
+          if (this.hipJogSlider && document.activeElement !== this.hipJogSlider) {
+            this.hipJogSlider.value = k.hip_jog_deg;
+          }
+          if (this.hipJogVal) {
+            this.hipJogVal.textContent = (k.hip_jog_deg >= 0 ? '+' : '') + k.hip_jog_deg.toFixed(1) + '°';
+          }
         }
-        if (this.jogVal) {
-          this.jogVal.textContent = k.jog_angle_deg.toFixed(1) + '°';
+        if (k.jog_angle_deg !== undefined) {
+          if (this.jogSlider && document.activeElement !== this.jogSlider) {
+            this.jogSlider.value = k.jog_angle_deg;
+          }
+          if (this.jogVal) {
+            this.jogVal.textContent = k.jog_angle_deg.toFixed(1) + '°';
+          }
+        }
+        if (k.ankle_jog_deg !== undefined) {
+          if (this.ankleJogSlider && document.activeElement !== this.ankleJogSlider) {
+            this.ankleJogSlider.value = k.ankle_jog_deg;
+          }
+          if (this.ankleJogVal) {
+            this.ankleJogVal.textContent = (k.ankle_jog_deg >= 0 ? '+' : '') + k.ankle_jog_deg.toFixed(1) + '°';
+          }
         }
       }
     }
-
-    // 11. Biomechanical Assistance & Robotic Actuators Power Telemetry
     const p = telemetry.power || {};
     const humanPct = p.human_strength_used_pct ?? 50.0;
     const exoPct = p.exo_strength_used_pct ?? 50.0;
@@ -650,6 +777,8 @@ class MoveAssistDashboard {
         this.cardSubMode.textContent = `${period}s Cadence (${Math.round(spm)} spm)`;
       } else if (currentMode === 'SIT_STAND') {
         this.cardSubMode.textContent = 'Bilateral Transfer (0-85°)';
+      } else if (currentMode === 'REHAB_REACH') {
+        this.cardSubMode.textContent = 'Upper-Limb Reach & Lift';
       } else if (currentMode === 'STANDBY') {
         this.cardSubMode.textContent = 'Upright Stance Lock (8°)';
       } else {
@@ -708,12 +837,18 @@ class MoveAssistDashboard {
     if (this.sensorEncoderVal) this.sensorEncoderVal.textContent = `${singleSourceKneeAngle}°`;
     if (this.sensorFsrVal) this.sensorFsrVal.textContent = `${grfFormatted} N`;
     if (this.sensorEmgVal) this.sensorEmgVal.textContent = `${(sensors.emg?.envelope_norm || 0.05).toFixed(2)} RMS`;
+    if (this.sensorArmImuVal && sensors.imu_arm) this.sensorArmImuVal.textContent = `${(sensors.imu_arm.pitch_deg || 0).toFixed(1)}°`;
+    if (this.sensorElbowEncoderVal && sensors.elbow_encoder) this.sensorElbowEncoderVal.textContent = `${(sensors.elbow_encoder.angle_deg || 0).toFixed(1)}°`;
+    if (this.sensorEmgArmVal && sensors.emg_arm) this.sensorEmgArmVal.textContent = `${(sensors.emg_arm.envelope_rms || 0.08).toFixed(2)} RMS`;
 
     const allSensorsOk = sensors.all_healthy !== false;
     if (this.dotImuThigh) this.dotImuThigh.className = sensors.imu_thigh?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
     if (this.dotImuShank) this.dotImuShank.className = sensors.imu_shank?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
     if (this.dotEncoder) this.dotEncoder.className = sensors.encoder?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
     if (this.dotFsr) this.dotFsr.className = sensors.foot_pressure?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
+    if (this.dotImuArm) this.dotImuArm.className = sensors.imu_arm?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
+    if (this.dotEncoderElbow) this.dotEncoderElbow.className = sensors.elbow_encoder?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
+    if (this.dotEmgArm) this.dotEmgArm.className = sensors.emg_arm?.healthy !== false ? 'sensor-health-dot active' : 'sensor-health-dot fault';
 
     // 15. Actuator Status Card
     if (this.actuatorStatusTag) {
