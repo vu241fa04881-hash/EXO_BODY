@@ -104,6 +104,8 @@ class SimulationEngine:
                 self.manual_shoulder_jog_deg = max(-45.0, min(110.0, float(shoulder_jog_deg)))
                 self.manual_ankle_jog_deg = max(-30.0, min(30.0, float(ankle_jog_deg)))
                 self.manual_elbow_jog_deg = max(0.0, min(90.0, float(elbow_jog_deg)))
+            if self.latest_telemetry and "kinematics" in self.latest_telemetry:
+                self.latest_telemetry["kinematics"]["mode"] = self.kinematic_mode
 
 
     def update_anthropometrics(self, height_m: float, mass_kg: float) -> None:

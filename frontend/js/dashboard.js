@@ -568,7 +568,7 @@ class MoveAssistDashboard {
     const cmdTorque = Math.abs(torques.commanded_nm || 0);
     const maxTorque = 35.0;
     const ratio = Math.min(1.0, cmdTorque / maxTorque);
-    const circumference = 2 * Math.PI * 22; // r=22
+    const circumference = 2 * Math.PI * 13; // r=13 (compact HUD ring)
     const offset = circumference * (1.0 - ratio);
 
     if (this.hudRingFill) {

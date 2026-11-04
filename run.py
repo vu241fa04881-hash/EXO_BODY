@@ -9,7 +9,7 @@ from threading import Thread
 
 from backend.config import DEFAULT_SIM, SCIENTIFIC_DISCLAIMER
 from backend.simulation.loop import SimulationEngine
-from backend.server import create_server
+from backend.server import create_server, SessionManager
 
 
 def main():
@@ -31,14 +31,14 @@ def main():
     display_host = "127.0.0.1" if host == "0.0.0.0" else host
     url = f"http://{display_host}:{port}"
 
-    # 1. Initialize Simulation Engine
-    print("[1/3] Initializing 100 Hz Closed-Loop Simulation Engine...")
-    engine = SimulationEngine(dt=DEFAULT_SIM.dt)
-    engine.start_background_loop()
+    # 1. Initialize Simulation Engine & Multi-User Session Manager
+    print("[1/3] Initializing 100 Hz Closed-Loop Multi-User Session Manager...")
+    session_manager = SessionManager(dt=DEFAULT_SIM.dt)
+    default_engine = session_manager.get_engine("default")
 
     # 2. Start HTTP & SSE Telemetry Server
     print(f"[2/3] Starting Telemetry Streaming Server on {host}:{port}...")
-    server = create_server(host=host, port=port, engine=engine)
+    server = create_server(host=host, port=port, engine=default_engine, session_manager=session_manager)
     server_thread = Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
 
@@ -58,8 +58,8 @@ def main():
         while True:
             time.sleep(1.0)
     except KeyboardInterrupt:
-        print("\n[SHUTDOWN] Stopping simulation engine and server...")
-        engine.stop_background_loop()
+        print("\n[SHUTDOWN] Stopping simulation engines and server...")
+        session_manager.stop_all()
         server.shutdown()
         server.server_close()
         print("[SHUTDOWN] MoveAssist cleanly terminated. Goodbye!")

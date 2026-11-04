@@ -83,7 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function connectEventStream() {
     console.log('[MoveAssist] Connecting to real-time telemetry stream...');
-    eventSource = new EventSource('/api/stream');
+    const sid = (window.MoveAssistSession && window.MoveAssistSession.getSessionId)
+      ? window.MoveAssistSession.getSessionId()
+      : 'default';
+    eventSource = new EventSource('/api/stream?session_id=' + encodeURIComponent(sid));
 
     eventSource.onopen = () => {
       isConnected = true;
